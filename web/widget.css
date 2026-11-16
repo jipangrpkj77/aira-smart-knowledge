@@ -1,0 +1,120 @@
+#aira-root, #aira-root * {box-sizing:border-box}
+#aira-root{position:fixed!important;right:22px;bottom:22px;z-index:2147483000;font-family:Arial,'Segoe UI',sans-serif;color:#14233f}
+#aira-root button{cursor:pointer;font:inherit}
+#aira-launch{display:flex;gap:11px;align-items:center;justify-content:flex-end;animation:aira-enter .5s ease both}
+#aira-bubble{background:#fff;color:#174785;border-radius:30px;padding:13px 16px;font-size:14px;font-weight:750;box-shadow:0 5px 26px #16315a33;white-space:nowrap;border:0;transition:opacity .3s}
+#aira-bubble[hidden]{display:none}
+#aira-avatar{height:94px;width:94px;border:3px solid white;border-radius:50%;overflow:hidden;background:#dbe9ff;box-shadow:0 0 0 4px #3c8bff38,0 0 24px #247cf977;display:grid;place-items:center;padding:0;transition:transform .2s}
+#aira-avatar:hover{transform:scale(1.055)}
+#aira-avatar img{height:92%;width:92%;object-fit:contain;object-position:center bottom;display:block;transform:translateY(5px)}
+#aira-panel{width:min(390px,calc(100vw - 20px));height:min(610px,calc(100dvh - 120px));display:none;flex-direction:column;background:#fff;border-radius:18px;overflow:hidden;margin:0 0 14px auto;border:1px solid #dae7f7;box-shadow:0 14px 54px #061d4e55}
+#aira-root.aira-open #aira-panel{display:flex;animation:aira-enter .25s ease both}
+#aira-header{background:linear-gradient(120deg,#123c85,#2072dc);color:#fff;padding:13px 14px;display:flex;align-items:center;gap:10px}
+#aira-header img{width:48px;height:48px;object-fit:contain;border-radius:50%;background:#d8e9ff}
+#aira-h-title{font-weight:750;flex:1;font-size:16px}
+#aira-h-title small{display:block;font-weight:400;color:#dceaff;font-size:11px;padding-top:4px}
+#aira-close{border:0;background:transparent;color:white;font-size:24px;padding:3px 9px}
+#aira-messages{flex:1;min-height:0;overflow:auto;padding:15px;background:#f6f9ff;display:flex;flex-direction:column;gap:10px}
+.aira-msg{padding:10px 13px;border-radius:14px;line-height:1.48;font-size:13.5px;max-width:90%;white-space:pre-wrap;overflow-wrap:anywhere}
+.aira-ai{align-self:flex-start;background:#fff;border:1px solid #e0e9f5}
+.aira-user{align-self:flex-end;background:#1b5eb9;color:#fff}
+#aira-quick{display:flex;gap:6px;padding:10px 11px 2px;overflow:auto;background:white}
+.aira-chip{flex-shrink:0;border:1px solid #c2d7f3;border-radius:16px;padding:6px 10px;color:#1c528e;background:white;font-size:11.5px!important}
+#aira-form{display:flex;gap:9px;padding:10px;background:#fff;align-items:center}
+#aira-input{min-width:0;flex:1;border:1px solid #d4e0ef;border-radius:18px;padding:11px 12px;font-size:13px;outline:none;color:#17233c;background:#f8fbff}
+#aira-send{background:#185cb5;color:white;border:0;border-radius:50%;width:40px;height:40px;font-size:17px}
+#aira-footer{font-size:10px;text-align:center;background:white;color:#718096;padding:0 8px 9px}
+@keyframes aira-enter{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:540px){#aira-root{bottom:14px;right:13px}#aira-avatar{width:80px;height:80px}#aira-panel{height:min(610px,calc(100dvh - 108px))}#aira-bubble{font-size:12px;padding:10px}}
+@media(prefers-reduced-motion:reduce){#aira-root *,#aira-root{animation:none!important;transition:none!important}}
+
+/* AIRA Living Animation V2.0 */
+#aira-root{bottom:38px}
+#aira-avatar{width:104px;height:104px;overflow:visible;border:0;background:transparent;box-shadow:none;filter:drop-shadow(0 0 12px rgba(46,136,255,.34))}
+#aira-avatar:before{content:'';position:absolute;inset:6px;border:2px solid rgba(128,183,255,.68);border-radius:50%;background:radial-gradient(circle at center,#e6f2ff 5%,#bfd8fc 90%);z-index:-1;box-shadow:0 0 0 4px rgba(68,139,255,.17),0 0 24px rgba(58,138,255,.28)}
+#aira-avatar img{width:100%;height:100%;object-fit:contain;object-position:center bottom;transform:none;transition:filter .2s}
+#aira-avatar.aira-breath img{animation:aira-soft-breath 4.8s ease-in-out infinite}
+#aira-avatar.aira-thinking img{animation:aira-think-motion 2.8s ease-in-out infinite}
+#aira-bubble{background:#fff;font-size:13px;box-shadow:0 5px 22px rgba(18,65,128,.18)}
+#aira-launch{gap:8px}
+@keyframes aira-soft-breath {0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-2px) scale(1.008)}}
+@keyframes aira-think-motion {0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+#aira-demo-panel{position:fixed;left:20px;top:20px;display:flex;gap:7px;flex-wrap:wrap;max-width:440px;z-index:1500}
+#aira-demo-panel button{background:#102b53;color:#f2f7ff;border:1px solid #396cb1;border-radius:20px;padding:9px 13px;cursor:pointer}
+#aira-demo-panel button:hover{background:#1b4d8f}
+@media(max-width:540px){#aira-root{right:12px;bottom:20px}#aira-avatar{width:88px;height:88px}#aira-demo-panel{left:12px;top:12px;max-width:90vw}#aira-demo-panel button{padding:7px 8px;font-size:11px}}
+@media(prefers-reduced-motion:reduce){#aira-avatar.aira-breath img,#aira-avatar.aira-thinking img{animation:none!important}}
+
+/* AIRA V2.2: override global Streamlit input, textarea color !important. */
+#aira-root #aira-panel #aira-form input#aira-input,
+#aira-root #aira-panel #aira-form input#aira-input:focus,
+#aira-root #aira-panel #aira-form input#aira-input:hover,
+#aira-root #aira-panel #aira-form input#aira-input:active {
+    color: #172b4d !important;
+    -webkit-text-fill-color: #172b4d !important;
+    background: #f5f8fc !important;
+    caret-color: #172b4d !important;
+    border-color: #cbdcf1 !important;
+    opacity: 1 !important;
+}
+#aira-root #aira-panel #aira-form input#aira-input::placeholder {
+    color: #64748b !important;
+    -webkit-text-fill-color: #64748b !important;
+    opacity: 1 !important;
+}
+#aira-root #aira-panel #aira-form input#aira-input:focus {
+    border-color: #4588da !important;
+    box-shadow: 0 0 0 2px rgba(69,136,218,.14) !important;
+}
+
+
+/* AIRA V2.3: compact panel, readable chat, animated typing status */
+#aira-root #aira-panel {
+    width:min(370px, calc(100vw - 24px));
+    height:min(545px, calc(100dvh - 125px));
+    border-radius:17px;
+}
+#aira-root #aira-header {padding:11px 12px;min-height:69px}
+#aira-root #aira-header img {width:43px;height:43px;object-fit:contain}
+#aira-root #aira-h-title {font-size:15px}
+#aira-root #aira-h-title small {font-size:10px}
+#aira-root #aira-minimize,
+#aira-root #aira-close {
+    flex:0 0 auto;display:grid;place-items:center;
+    width:30px;height:30px;border:0;border-radius:9px;
+    background:transparent;color:#fff;font-size:22px;
+    padding:0;line-height:1;
+}
+#aira-root #aira-minimize:hover,
+#aira-root #aira-close:hover {background:rgba(255,255,255,.16)}
+#aira-root #aira-messages {gap:9px;padding:13px}
+#aira-root .aira-msg {max-width:94%;font-size:13.5px}
+#aira-root #aira-typing {
+    display:flex;align-items:center;gap:9px;
+    flex:0 0 auto;padding:7px 13px;
+    color:#45617f;background:#f6f9ff;
+    border-top:1px solid #e8eef7;font-size:12px;
+}
+#aira-root #aira-typing[hidden] {display:none!important}
+#aira-root .aira-typing-dots{display:inline-flex;gap:3px;align-items:center;min-width:25px}
+#aira-root .aira-typing-dots i {
+    width:5px;height:5px;border-radius:50%;background:#2872ca;
+    animation:aira-dot 1.15s ease-in-out infinite;
+}
+#aira-root .aira-typing-dots i:nth-child(2) {animation-delay:.15s}
+#aira-root .aira-typing-dots i:nth-child(3) {animation-delay:.3s}
+@keyframes aira-dot {
+    0%,65%,100%{opacity:.35;transform:translateY(0)}
+    30%{opacity:1;transform:translateY(-3px)}
+}
+#aira-root #aira-quick {padding:8px 11px 2px}
+#aira-root #aira-form {padding:8px 10px}
+#aira-root #aira-footer {padding-bottom:8px}
+#aira-root #aira-avatar {width:100px;height:100px}
+@media(max-width:540px){
+  #aira-root #aira-panel {width:min(370px,calc(100vw - 20px));height:min(545px,calc(100dvh - 105px))}
+  #aira-root #aira-avatar {width:84px;height:84px}
+}
+@media(prefers-reduced-motion:reduce){#aira-root .aira-typing-dots i{animation:none!important}}
+
+.aira-sources{font-size:10px;color:#66819b;margin:1px 12px 10px 16px;line-height:1.5;}
