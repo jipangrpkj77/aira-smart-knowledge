@@ -1,0 +1,18 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>html,body{margin:0;background:transparent!important;overflow:hidden}</style></head><body><script>
+let pending=null, isOpen=false;
+function send(type,data={}){window.parent.postMessage({isStreamlitMessage:true,type,...data},'*')}
+window.airaResize=function(open){isOpen=open;let h=open?Math.min(740,Math.max(360,window.screen.availHeight-90)):155;try{h=open?Math.min(740,window.parent.innerHeight-10):155;window.frameElement.style.setProperty('width',open?'min(420px, 100vw)':'min(310px, 100vw)','important')}catch(e){} send('streamlit:setFrameHeight',{height:h})};
+function stopPending(){const p=pending;pending=null;if(p){clearTimeout(p.timer);clearInterval(p.pollTimer)}return p}
+window.airaRequest=(prompt,language)=>new Promise((resolve,reject)=>{
+  if(pending){reject(Error('AIRA busy'));return}
+  const id=crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random();
+  let seq=0;
+  const timer=setTimeout(()=>{stopPending();reject(Error('Timeout'))},75000);
+  const pollTimer=setInterval(()=>{if(pending?.id===id)send('streamlit:setComponentValue',{value:{id,prompt,language,poll:++seq},dataType:'json'})},1000);
+  pending={id,resolve,timer,pollTimer};
+  send('streamlit:setComponentValue',{value:{id,prompt,language},dataType:'json'});
+});
+window.addEventListener('message',e=>{if(e.source!==window.parent||e.data?.type!=='streamlit:render')return;const reply=e.data.args?.reply;if(pending&&reply&&reply.id===pending.id){const p=stopPending();p.resolve(reply)}window.airaResize(isOpen)});
+window.addEventListener('pagehide',stopPending);
+send('streamlit:componentReady',{apiVersion:1});window.airaResize(false);
+</script><script src="embed.js"></script></body></html>
