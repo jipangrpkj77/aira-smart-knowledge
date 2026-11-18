@@ -851,8 +851,50 @@ def render_app():
         if st.button('Sync Now'):
             with st.spinner('Sync…'):st.json(r['sync'](include_remote=True))
         return
+    # Salin semua tetapan daripada st.secrets ke os.environ supaya kod website dapat membacanya (termasuk FTP_HOST, FTP_USER, FTP_PASS)
+    try:
+        for _k, _v in st.secrets.items():
+            if isinstance(_v, (str, int, float, bool)):
+                os.environ.setdefault(str(_k), str(_v))
+    except Exception:
+        pass
     # Website content and business logic retained; V4.4 adds scoped CSS and public CSV caching.
     exec(compile(website_source(),'SIGNTECH_MAIN_12-11-2026_EMBEDDED','exec'),{'__name__':'__main__','__file__':str(ROOT/'SIGNTECH_MAIN_12-11-2026_EMBEDDED')})
+    # Menyeimbangkan kedudukan menegak canvas poster supaya jarak atas (dari bar butang)
+    # sama tepat dengan jarak bawah (ke bahagian atas footer)
+    components.html("""<script>
+    (function() {
+        const doc = window.parent.document;
+        function centerPoster() {
+            const iframes = Array.from(doc.querySelectorAll('iframe')).filter(f => !f.title.includes('aira_cloud_widget') && f.offsetHeight > 120);
+            if (!iframes.length) return;
+            const posterFrame = iframes[0];
+            const posterBox = posterFrame.closest('div[data-testid="stElementContainer"]') || posterFrame.parentElement;
+            const navBlock = doc.querySelector('div[data-testid="stHorizontalBlock"]');
+            const allBlocks = Array.from(doc.querySelectorAll('div[data-testid="stElementContainer"]'));
+            const footerBox = allBlocks.reverse().find(el => el.innerText && el.innerText.includes("Let's Build Skills"));
+            if (!posterBox || !navBlock || !footerBox) return;
+
+            posterBox.style.marginTop = '0px';
+            posterBox.style.marginBottom = '0px';
+
+            const navBottom = navBlock.getBoundingClientRect().bottom;
+            const footerTop = footerBox.getBoundingClientRect().top;
+            const posterRect = posterBox.getBoundingClientRect();
+            const availableSpace = footerTop - navBottom;
+            if (availableSpace > posterRect.height) {
+                const equalGap = (availableSpace - posterRect.height) / 2;
+                const currentTopGap = posterRect.top - navBottom;
+                const offset = equalGap - currentTopGap;
+                posterBox.style.transform = `translateY(${Math.round(offset)}px)`;
+            } else {
+                posterBox.style.transform = 'none';
+            }
+        }
+        setInterval(centerPoster, 250);
+        window.parent.addEventListener('resize', centerPoster);
+    })();
+    </script>""", height=0, width=0)
     r=runtime()
     widget=components.declare_component('aira_cloud_widget',path=str(ROOT/'web'))
     st.markdown("""<style>
