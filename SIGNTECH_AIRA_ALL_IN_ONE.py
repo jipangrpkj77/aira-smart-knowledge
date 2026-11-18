@@ -858,8 +858,111 @@ def render_app():
                 os.environ.setdefault(str(_k), str(_v))
     except Exception:
         pass
+    os.environ.setdefault('FTP_HOST', 'sp162.mschosting.cloud')
+    os.environ.setdefault('FTP_USER', 'tukangfx')
+    os.environ.setdefault('FTP_PASS', 'Signtech2025!')
     # Website content and business logic retained; V4.4 adds scoped CSS and public CSV caching.
-    exec(compile(website_source(),'SIGNTECH_MAIN_12-11-2026_EMBEDDED','exec'),{'__name__':'__main__','__file__':str(ROOT/'SIGNTECH_MAIN_12-11-2026_EMBEDDED')})
+    _site_code = website_source() + '''
+from datetime import datetime
+from ftplib import FTP
+
+def append_trainer_to_ftp_csv(trainer_data, cv_file=None):
+    try:
+        ftp = FTP(os.environ.get("FTP_HOST", "sp162.mschosting.cloud"))
+        ftp.login(os.environ.get("FTP_USER", "tukangfx"), os.environ.get("FTP_PASS", "Signtech2025!"))
+        for folder in "httpdocs/Trainer".split("/"):
+            if folder:
+                try:
+                    ftp.cwd(folder)
+                except Exception:
+                    ftp.mkd(folder)
+                    ftp.cwd(folder)
+        if cv_file is not None:
+            safe_name = re.sub(r"[^a-zA-Z0-9_.-]", "_", cv_file.name)
+            filename_to_store = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{safe_name}"
+            ftp.storbinary(f"STOR {filename_to_store}", io.BytesIO(cv_file.getvalue()))
+        existing_content = io.BytesIO()
+        file_exists = False
+        try:
+            ftp.retrbinary("RETR list_of_trainers.csv", existing_content.write)
+            file_exists = True
+        except Exception:
+            file_exists = False
+        existing_content.seek(0)
+        raw_text = existing_content.read().decode("utf-8", errors="ignore").strip()
+        fieldnames = ["Timestamp", "Full Name", "Phone / WhatsApp", "Email Address", "Location", "Occupation", "Areas of Expertise", "Certifications"]
+        out_buffer = io.StringIO()
+        writer = csv.DictWriter(out_buffer, fieldnames=fieldnames)
+        if not file_exists or not raw_text:
+            writer.writeheader()
+        else:
+            out_buffer.write(raw_text + "\\n")
+        writer.writerow({
+            "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "Full Name": trainer_data.get("full_name", ""),
+            "Phone / WhatsApp": trainer_data.get("phone_number", ""),
+            "Email Address": trainer_data.get("email", ""),
+            "Location": trainer_data.get("location", ""),
+            "Occupation": trainer_data.get("occupation", ""),
+            "Areas of Expertise": trainer_data.get("expertise", ""),
+            "Certifications": trainer_data.get("certifications", ""),
+        })
+        ftp.storbinary("STOR list_of_trainers.csv", io.BytesIO(out_buffer.getvalue().encode("utf-8")))
+        ftp.quit()
+        return True, "Success"
+    except Exception as e:
+        return False, str(e)
+
+def append_registration_to_ftp_csv(reg_data):
+    try:
+        ftp = FTP(os.environ.get("FTP_HOST", "sp162.mschosting.cloud"))
+        ftp.login(os.environ.get("FTP_USER", "tukangfx"), os.environ.get("FTP_PASS", "Signtech2025!"))
+        for folder in "httpdocs/Workshop".split("/"):
+            if folder:
+                try:
+                    ftp.cwd(folder)
+                except Exception:
+                    ftp.mkd(folder)
+                    ftp.cwd(folder)
+        existing_content = io.BytesIO()
+        file_exists = False
+        try:
+            ftp.retrbinary("RETR registration.csv", existing_content.write)
+            file_exists = True
+        except Exception:
+            file_exists = False
+        existing_content.seek(0)
+        raw_bytes = existing_content.read()
+        is_binary_excel = raw_bytes.startswith(b"PK")
+        raw_text = "" if is_binary_excel else raw_bytes.decode("utf-8", errors="ignore").strip()
+        fieldnames = ["Timestamp", "Full Name", "Identity Card / Passport Number", "Gender", "Phone / WhatsApp", "Email Address", "Mailing Address", "Company / Organisation", "Current Job Title / Role", "Selected Course / Workshop", "Academic Qualification", "Payment Method"]
+        out_buffer = io.StringIO()
+        writer = csv.DictWriter(out_buffer, fieldnames=fieldnames)
+        if not file_exists or not raw_text:
+            writer.writeheader()
+        else:
+            out_buffer.write(raw_text + "\\n")
+        writer.writerow({
+            "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "Full Name": reg_data.get("full_name", ""),
+            "Identity Card / Passport Number": reg_data.get("ic_passport", ""),
+            "Gender": reg_data.get("gender", ""),
+            "Phone / WhatsApp": reg_data.get("phone", ""),
+            "Email Address": reg_data.get("email", ""),
+            "Mailing Address": reg_data.get("address", ""),
+            "Company / Organisation": reg_data.get("company", ""),
+            "Current Job Title / Role": reg_data.get("job_title", ""),
+            "Selected Course / Workshop": reg_data.get("course", ""),
+            "Academic Qualification": reg_data.get("academic_status", ""),
+            "Payment Method": reg_data.get("payment_method", ""),
+        })
+        ftp.storbinary("STOR registration.csv", io.BytesIO(out_buffer.getvalue().encode("utf-8")))
+        ftp.quit()
+        return True, "Success"
+    except Exception as e:
+        return False, str(e)
+'''
+    exec(compile(_site_code,'SIGNTECH_MAIN_12-11-2026_EMBEDDED','exec'),{'__name__':'__main__','__file__':str(ROOT/'SIGNTECH_MAIN_12-11-2026_EMBEDDED')})
     # Menyeimbangkan kedudukan menegak canvas poster supaya jarak atas (dari bar butang)
     # sama tepat dengan jarak bawah (ke bahagian atas footer)
     components.html("""<script>
