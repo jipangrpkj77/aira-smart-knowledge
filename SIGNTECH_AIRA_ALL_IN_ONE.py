@@ -851,16 +851,13 @@ def render_app():
         if st.button('Sync Now'):
             with st.spinner('Sync…'):st.json(r['sync'](include_remote=True))
         return
-    # Salin semua tetapan daripada st.secrets ke os.environ supaya kod website dapat membacanya
+    # Salin semua tetapan daripada st.secrets ke os.environ supaya kod website dapat membacanya (termasuk FTP_HOST, FTP_USER, FTP_PASS)
     try:
         for _k, _v in st.secrets.items():
             if isinstance(_v, (str, int, float, bool)):
                 os.environ.setdefault(str(_k), str(_v))
     except Exception:
         pass
-    os.environ.setdefault('FTP_HOST', 'sp162.mschosting.cloud')
-    os.environ.setdefault('FTP_USER', 'tukangfx')
-    os.environ.setdefault('FTP_PASS', 'Signtech2025!')
     # Website content and business logic retained; V4.4 adds scoped CSS and public CSV caching.
     exec(compile(website_source(),'SIGNTECH_MAIN_12-11-2026_EMBEDDED','exec'),{'__name__':'__main__','__file__':str(ROOT/'SIGNTECH_MAIN_12-11-2026_EMBEDDED')})
     # Menyeimbangkan kedudukan menegak canvas poster supaya jarak atas (dari bar butang)
