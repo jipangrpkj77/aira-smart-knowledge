@@ -850,9 +850,8 @@ def render_app():
             rows = download_csv(HOME_CANVAS_SHEET_ID)
             extracted = []
             for r in rows:
-                # Cari sel yang mempunyai teks panjang (menyokong susunan sama ada di Col A atau Col B)
                 candidates = [
-                    WHITESPACE.sub(' ', str(c)).strip()
+                    re.sub(r'\s*\(\d+\s*words?\)\s*$', '', WHITESPACE.sub(' ', str(c)).strip(), flags=re.I)
                     for c in r
                     if len(WHITESPACE.sub(' ', str(c)).strip()) > 35
                 ]
@@ -1026,6 +1025,31 @@ def append_registration_to_ftp_csv(reg_data):
     else:
         _site_code = _raw_site + "\n" + _ftp_override_code
 
+    # Suntik CSS gaya statement (sama jenis & saiz fon seperti halaman About, justify, dan rapat ke poster)
+    st.markdown("""<style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500&display=swap');
+    .signtech-home-statement {
+        font-family: 'Poppins', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+        font-size: 16px !important;
+        line-height: 1.72 !important;
+        font-weight: 400 !important;
+        color: #F1F5F9 !important;
+        text-align: justify !important;
+        text-justify: inter-word !important;
+        letter-spacing: 0.15px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
+    div[data-testid="stElementContainer"]:has(.signtech-statement-top) {
+        margin-bottom: -10px !important;
+    }
+    div[data-testid="stElementContainer"]:has(.signtech-statement-bottom) {
+        margin-top: -10px !important;
+    }
+    </style>""", unsafe_allow_html=True)
+
     # Suntik Ayat Pembuka (Row 1) di antara bar butang & canvas poster,
     # serta Ayat Penutup (Row 2) di antara canvas poster & footer pada halaman Home
     _home_branch_match = re.search(r'(?m)^([ \t]*)if\s+current_page\s*==\s*[\'"]Home[\'"]\s*:', _site_code)
@@ -1038,19 +1062,15 @@ def append_registration_to_ftp_csv(reg_data):
 
         _opening_snippet = (
             f"\n{_body_indent}st.markdown('''\n"
-            f"{_body_indent}<div style=\"max-width: 920px; margin: 22px auto 26px auto; padding: 0 18px; text-align: center;\">\n"
-            f"{_body_indent}    <p style=\"color: #F3F4F6; font-size: 16.5px; line-height: 1.78; font-weight: 400; letter-spacing: 0.2px; margin: 0;\">\n"
-            f"{_body_indent}        {html.escape(_home_opening_text)}\n"
-            f"{_body_indent}    </p>\n"
+            f"{_body_indent}<div class=\"signtech-home-statement signtech-statement-top\" style=\"margin-top: 14px; margin-bottom: 4px;\">\n"
+            f"{_body_indent}    {html.escape(_home_opening_text)}\n"
             f"{_body_indent}</div>\n"
             f"{_body_indent}''', unsafe_allow_html=True)\n"
         )
         _closing_snippet = (
             f"\n{_body_indent}st.markdown('''\n"
-            f"{_body_indent}<div style=\"max-width: 880px; margin: 28px auto 24px auto; padding: 0 18px; text-align: center;\">\n"
-            f"{_body_indent}    <p style=\"color: #E5E7EB; font-size: 15.8px; line-height: 1.75; font-weight: 400; letter-spacing: 0.2px; margin: 0;\">\n"
-            f"{_body_indent}        {html.escape(_home_closing_text)}\n"
-            f"{_body_indent}    </p>\n"
+            f"{_body_indent}<div class=\"signtech-home-statement signtech-statement-bottom\" style=\"margin-top: 4px; margin-bottom: 18px;\">\n"
+            f"{_body_indent}    {html.escape(_home_closing_text)}\n"
             f"{_body_indent}</div>\n"
             f"{_body_indent}''', unsafe_allow_html=True)\n"
         )
@@ -1064,11 +1084,11 @@ def append_registration_to_ftp_csv(reg_data):
 
     exec(compile(_site_code,'SIGNTECH_MAIN_12-11-2026_EMBEDDED','exec'),{'__name__':'__main__','__file__':str(ROOT/'SIGNTECH_MAIN_12-11-2026_EMBEDDED')})
 
-    # Kekalkan keselarasan susun atur canvas poster tanpa bertindih dengan ayat pembuka & penutup
+    # Selaraskan lebar kedua-dua statement supaya sentiasa menyamai lebar tepat bingkai poster
     components.html("""<script>
     (function() {
         const doc = window.parent.document;
-        function resetPosterTransform() {
+        function syncPosterAndStatements() {
             const iframes = Array.from(doc.querySelectorAll('iframe')).filter(f => !f.title.includes('aira_cloud_widget') && f.offsetHeight > 120);
             if (!iframes.length) return;
             const posterFrame = iframes[0];
@@ -1077,10 +1097,16 @@ def append_registration_to_ftp_csv(reg_data):
                 posterBox.style.transform = 'none';
                 posterBox.style.marginTop = '0px';
                 posterBox.style.marginBottom = '0px';
+                const posterWidth = posterFrame.getBoundingClientRect().width;
+                if (posterWidth > 200) {
+                    doc.querySelectorAll('.signtech-home-statement').forEach(el => {
+                        el.style.maxWidth = Math.round(posterWidth) + 'px';
+                    });
+                }
             }
         }
-        setInterval(resetPosterTransform, 300);
-        window.parent.addEventListener('resize', resetPosterTransform);
+        setInterval(syncPosterAndStatements, 250);
+        window.parent.addEventListener('resize', syncPosterAndStatements);
     })();
     </script>""", height=0, width=0)
 
