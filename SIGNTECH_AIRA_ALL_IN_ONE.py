@@ -822,6 +822,130 @@ def chat_failure(lang):
              else 'AIRA tidak dapat menyediakan jawapan buat sementara waktu. Sila cuba lagi.'),
             'sources':[], 'provider':'local'}
 
+def _patch_courses_inline_canvas(site_code):
+    """Pastikan setiap banner (sedia ada dan tambahan masa hadapan) memaparkan
+    kanvas Details/Syllabus tepat di bawah banner masing-masing secara dinamik."""
+    tree = ast.parse(site_code)
+    courses_branch = None
+    for node in ast.walk(tree):
+        if isinstance(node, ast.If):
+            test_src = ast.get_source_segment(site_code, node.test) or ''
+            if 'current_page' in test_src and 'Courses' in test_src:
+                courses_branch = node
+                break
+    if not courses_branch or not courses_branch.body:
+        return site_code
+
+    lines = site_code.splitlines(keepends=True)
+    start_line = courses_branch.body[0].lineno - 1
+    end_line = courses_branch.body[-1].end_lineno
+    first_line = lines[start_line]
+    indent = first_line[:len(first_line) - len(first_line.lstrip(' \t'))]
+
+    # Bina pelaksana dinamik berasaskan katalog & course_content_dict sedia ada
+    # supaya setiap baris banner mempunyai slot kontena maklumat tepat di bawahnya
+    replacement = f"""{indent}_active_course = st.session_state.get("selected_course") or st.session_state.get("active_course") or st.session_state.get("open_course")
+{indent}_active_tab = st.session_state.get("selected_course_tab") or st.session_state.get("active_course_tab") or st.session_state.get("open_tab") or "Details"
+{indent}def _norm_course_key(val):
+{indent}    return re.sub(r"[^a-z0-9]+", "", str(val or "").casefold())
+{indent}_course_entries = []
+{indent}try:
+{indent}    if "df_courses" in locals() and df_courses is not None and len(df_courses) > 0:
+{indent}        for _, _r in df_courses.iterrows():
+{indent}            _vals = [str(x).strip() for x in _r.tolist() if str(x).strip() and str(x).strip().lower() != "nan"]
+{indent}            _t = str(_r.iloc[1]).strip() if len(_r) > 1 else (_vals[0] if _vals else "")
+{indent}            if not _t or _t.lower() in ("course", "course name", "name", "title", "nan"):
+{indent}                continue
+{indent}            _img = next((v for v in _vals if v.lower().startswith(("http://", "https://")) or v.lower().endswith((".png", ".jpg", ".jpeg", ".webp"))), "")
+{indent}            _course_entries.append((_t, _img))
+{indent}except Exception:
+{indent}    pass
+{indent}if not _course_entries and "course_content_dict" in locals() and isinstance(course_content_dict, dict):
+{indent}    for _k, _v in course_content_dict.items():
+{indent}        if _k != "default" and isinstance(_v, dict):
+{indent}            _course_entries.append((_v.get("title") or _k, _v.get("image") or _v.get("banner") or ""))
+{indent}def _resolve_course_info(title):
+{indent}    _cdict = locals().get("course_content_dict") or globals().get("course_content_dict") or {{}}
+{indent}    if title in _cdict and isinstance(_cdict[title], dict):
+{indent}        return _cdict[title]
+{indent}    _nk = _norm_course_key(title)
+{indent}    for _k, _v in _cdict.items():
+{indent}        if _k != "default" and isinstance(_v, dict):
+{indent}            if _norm_course_key(_k) == _nk or _norm_course_key(_v.get("title", "")) == _nk:
+{indent}                return _v
+{indent}    for _k, _v in _cdict.items():
+{indent}        if _k != "default" and isinstance(_v, dict):
+{indent}            _ck = _norm_course_key(_k)
+{indent}            if _ck and (_ck in _nk or _nk in _ck):
+{indent}                return _v
+{indent}    return _cdict.get("default", {{}}) if isinstance(_cdict, dict) else {{}}
+{indent}for _idx, (_c_title, _c_img) in enumerate(_course_entries):
+{indent}    _row_wrap = st.container()
+{indent}    with _row_wrap:
+{indent}        _c_banner, _c_btns = st.columns([5.3, 1.0], gap="medium")
+{indent}        with _c_banner:
+{indent}            if _c_img:
+{indent}                st.markdown(f'<div style="width:100%;border-radius:12px;overflow:hidden;border:1px solid rgba(148,163,184,0.22);margin-bottom:4px;"><img src="{{html.escape(_c_img)}}" style="width:100%;display:block;object-fit:cover;" alt="{{html.escape(_c_title)}}"/></div>', unsafe_allow_html=True)
+{indent}            else:
+{indent}                st.markdown(f'<div style="width:100%;padding:22px 24px;border-radius:12px;background:linear-gradient(135deg,#0f172a,#1e293b);border:1px solid rgba(59,130,246,0.35);color:#F8FAFC;font-weight:700;font-size:18px;letter-spacing:0.4px;text-align:center;">{{html.escape(_c_title.upper())}}</div>', unsafe_allow_html=True)
+{indent}        with _c_btns:
+{indent}            if st.button("Details", key=f"btn_details_{{ _idx }}_{{ _norm_course_key(_c_title) }}", use_container_width=True):
+{indent}                if st.session_state.get("_inline_open_idx") == _idx and st.session_state.get("_inline_open_type") == "Details":
+{indent}                    st.session_state["_inline_open_idx"] = None
+{indent}                    st.session_state["_inline_open_type"] = None
+{indent}                else:
+{indent}                    st.session_state["_inline_open_idx"] = _idx
+{indent}                    st.session_state["_inline_open_type"] = "Details"
+{indent}                st.rerun()
+{indent}            if st.button("Syllabus", key=f"btn_syllabus_{{ _idx }}_{{ _norm_course_key(_c_title) }}", use_container_width=True):
+{indent}                if st.session_state.get("_inline_open_idx") == _idx and st.session_state.get("_inline_open_type") == "Syllabus":
+{indent}                    st.session_state["_inline_open_idx"] = None
+{indent}                    st.session_state["_inline_open_type"] = None
+{indent}                else:
+{indent}                    st.session_state["_inline_open_idx"] = _idx
+{indent}                    st.session_state["_inline_open_type"] = "Syllabus"
+{indent}                st.rerun()
+{indent}        if st.session_state.get("_inline_open_idx") == _idx and st.session_state.get("_inline_open_type"):
+{indent}            _mode_lbl = st.session_state["_inline_open_type"]
+{indent}            _info = _resolve_course_info(_c_title)
+{indent}            _display_title = html.escape(str(_info.get("title") or _c_title))
+{indent}            if _mode_lbl == "Details":
+{indent}                _ov = html.escape(str(_info.get("overview") or "Comprehensive hands-on workshop led by industry practitioners."))
+{indent}                _dur = html.escape(str(_info.get("duration") or "3 Days (Full-Time Practical Workshop)"))
+{indent}                _md = html.escape(str(_info.get("mode") or "Physical / Online Instructor-Led"))
+{indent}                _hrd = html.escape(str(_info.get("hrd_status") or "HRD Corp Claimable (SBL-Khas)"))
+{indent}                _aud = html.escape(str(_info.get("target_audience") or "Professionals, Engineers, Analysts, Executives & Students"))
+{indent}                _body_html = f'''
+{indent}                <div style="margin-bottom:10px;">{{_ov}}</div>
+{indent}                <ul style="margin:6px 0 0 18px;padding:0;line-height:1.7;">
+{indent}                    <li><strong>Duration:</strong> {{_dur}}</li>
+{indent}                    <li><strong>Training Mode:</strong> {{_md}}</li>
+{indent}                    <li><strong>HRD Corp Status:</strong> {{_hrd}}</li>
+{indent}                    <li><strong>Target Audience:</strong> {{_aud}}</li>
+{indent}                </ul>
+{indent}                '''
+{indent}            else:
+{indent}                _s_intro = html.escape(str(_info.get("syllabus_intro") or "Comprehensive practical curriculum focusing on real-world application from zero:"))
+{indent}                _mods = _info.get("modules") if isinstance(_info.get("modules"), list) else []
+{indent}                _li_items = "".join(f"<li>{{html.escape(str(m))}}</li>" for m in _mods if str(m).strip())
+{indent}                if not _li_items:
+{indent}                    _li_items = "<li>Full modular syllabus outline is available upon inquiry or registration.</li>"
+{indent}                _body_html = f'''
+{indent}                <div style="margin-bottom:10px;">{{_s_intro}}</div>
+{indent}                <ul style="margin:6px 0 0 18px;padding:0;line-height:1.7;">{{_li_items}}</ul>
+{indent}                '''
+{indent}            st.markdown(f'''
+{indent}            <div class="signtech-course-canvas" style="background:#050B14;border:1.5px solid #2563EB;border-radius:12px;padding:20px 24px;margin-top:6px;margin-bottom:16px;color:#E2E8F0;box-shadow:0 8px 24px rgba(2,6,23,0.65);">
+{indent}                <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(59,130,246,0.35);padding-bottom:10px;margin-bottom:12px;gap:12px;">
+{indent}                    <div style="color:#3B82F6;font-size:17px;font-weight:700;">Course {{_mode_lbl}} — {{_display_title}}</div>
+{indent}                    <div style="color:#94A3B8;font-size:12px;white-space:nowrap;">(Click {{_mode_lbl}} again to close)</div>
+{indent}                </div>
+{indent}                <div style="font-size:14px;color:#F1F5F9;">{{_body_html}}</div>
+{indent}            </div>
+{indent}            ''', unsafe_allow_html=True)
+"""
+    return ''.join(lines[:start_line]) + replacement + ''.join(lines[end_line:])
+
 def render_app():
     import streamlit as st
     import streamlit.components.v1 as components
@@ -1082,6 +1206,9 @@ def append_registration_to_ftp_csv(reg_data):
             + _site_code[_home_end:]
         )
 
+    # Pastikan setiap banner pada halaman Courses memaparkan kanvas Details/Syllabus tepat di bawah banner masing-masing
+    _site_code = _patch_courses_inline_canvas(_site_code)
+
     exec(compile(_site_code,'SIGNTECH_MAIN_12-11-2026_EMBEDDED','exec'),{'__name__':'__main__','__file__':str(ROOT/'SIGNTECH_MAIN_12-11-2026_EMBEDDED')})
 
     # Selaraskan lebar kedua-dua statement supaya menyamai lebar bingkai poster pada halaman Home,
@@ -1164,15 +1291,20 @@ def append_registration_to_ftp_csv(reg_data):
                     });
 
                     // Sembunyikan sebarang elemen pemisah kosong (spacer) di antara baris banner kursus
+                    // KECUALI kanvas paparan Details / Syllabus kursus
                     if (rowWrapper && idx < courseRows.length - 1) {
                         let nextEl = rowWrapper.nextElementSibling;
                         const nextRowWrapper = courseRows[idx + 1].closest('div[data-testid="stElementContainer"]') || courseRows[idx + 1].parentElement;
                         while (nextEl && nextEl !== nextRowWrapper) {
-                            const hasVisibleContent = nextEl.querySelector('img, iframe, button, input, table, h1, h2, h3, p');
+                            const isCourseCanvas = nextEl.querySelector('.signtech-course-canvas') || (nextEl.innerText && nextEl.innerText.trim().length > 0);
+                            const hasVisibleContent = isCourseCanvas || nextEl.querySelector('img, iframe, button, input, table, h1, h2, h3, p, ul, li');
                             if (!hasVisibleContent) {
                                 nextEl.style.setProperty('display', 'none', 'important');
                                 nextEl.style.setProperty('height', '0px', 'important');
                                 nextEl.style.setProperty('margin', '0px', 'important');
+                            } else {
+                                nextEl.style.removeProperty('display');
+                                nextEl.style.removeProperty('height');
                             }
                             nextEl = nextEl.nextElementSibling;
                         }
