@@ -1025,7 +1025,7 @@ def append_registration_to_ftp_csv(reg_data):
     else:
         _site_code = _raw_site + "\n" + _ftp_override_code
 
-    # Suntik CSS gaya statement (sama jenis & saiz fon seperti halaman About, justify, dan rapat ke poster)
+    # Suntik CSS gaya statement (sama jenis & saiz fon seperti halaman About, justify, dan ruang seimbang atas & bawah poster)
     st.markdown("""<style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500&display=swap');
     .signtech-home-statement {
@@ -1043,10 +1043,10 @@ def append_registration_to_ftp_csv(reg_data):
         margin-right: auto !important;
     }
     div[data-testid="stElementContainer"]:has(.signtech-statement-top) {
-        margin-bottom: -10px !important;
+        margin-bottom: 2px !important;
     }
     div[data-testid="stElementContainer"]:has(.signtech-statement-bottom) {
-        margin-top: -10px !important;
+        margin-top: 2px !important;
     }
     </style>""", unsafe_allow_html=True)
 
@@ -1062,14 +1062,14 @@ def append_registration_to_ftp_csv(reg_data):
 
         _opening_snippet = (
             f"\n{_body_indent}st.markdown('''\n"
-            f"{_body_indent}<div class=\"signtech-home-statement signtech-statement-top\" style=\"margin-top: 14px; margin-bottom: 4px;\">\n"
+            f"{_body_indent}<div class=\"signtech-home-statement signtech-statement-top\" style=\"margin-top: 14px; margin-bottom: 18px;\">\n"
             f"{_body_indent}    {html.escape(_home_opening_text)}\n"
             f"{_body_indent}</div>\n"
             f"{_body_indent}''', unsafe_allow_html=True)\n"
         )
         _closing_snippet = (
             f"\n{_body_indent}st.markdown('''\n"
-            f"{_body_indent}<div class=\"signtech-home-statement signtech-statement-bottom\" style=\"margin-top: 4px; margin-bottom: 18px;\">\n"
+            f"{_body_indent}<div class=\"signtech-home-statement signtech-statement-bottom\" style=\"margin-top: 18px; margin-bottom: 18px;\">\n"
             f"{_body_indent}    {html.escape(_home_closing_text)}\n"
             f"{_body_indent}</div>\n"
             f"{_body_indent}''', unsafe_allow_html=True)\n"
@@ -1085,6 +1085,7 @@ def append_registration_to_ftp_csv(reg_data):
     exec(compile(_site_code,'SIGNTECH_MAIN_12-11-2026_EMBEDDED','exec'),{'__name__':'__main__','__file__':str(ROOT/'SIGNTECH_MAIN_12-11-2026_EMBEDDED')})
 
     # Selaraskan lebar kedua-dua statement supaya sentiasa menyamai lebar tepat bingkai poster
+    # dan buang ruang kosong berlebihan di bahagian bawah bekas poster
     components.html("""<script>
     (function() {
         const doc = window.parent.document;
@@ -1097,10 +1098,14 @@ def append_registration_to_ftp_csv(reg_data):
                 posterBox.style.transform = 'none';
                 posterBox.style.marginTop = '0px';
                 posterBox.style.marginBottom = '0px';
-                const posterWidth = posterFrame.getBoundingClientRect().width;
-                if (posterWidth > 200) {
+                const frameRect = posterFrame.getBoundingClientRect();
+                if (frameRect.height > 120) {
+                    posterBox.style.height = Math.round(frameRect.height) + 'px';
+                    posterBox.style.minHeight = '0px';
+                }
+                if (frameRect.width > 200) {
                     doc.querySelectorAll('.signtech-home-statement').forEach(el => {
-                        el.style.maxWidth = Math.round(posterWidth) + 'px';
+                        el.style.maxWidth = Math.round(frameRect.width) + 'px';
                     });
                 }
             }
