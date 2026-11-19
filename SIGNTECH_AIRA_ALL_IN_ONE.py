@@ -656,7 +656,7 @@ def configured_providers():
 
 def api_json(url, payload, headers):
     request=Request(url, data=json.dumps(payload,ensure_ascii=False).encode('utf-8'),
-                    headers={'Content-Type':'application/json',**headers},method='POST')
+                    headers={'Content-Type':'application/json','User-Agent':'AIRA-SIGNTECH/4.4',**headers},method='POST')
     with urlopen(request,timeout=25) as response:
         return json.loads(response.read(1_000_000))
 
