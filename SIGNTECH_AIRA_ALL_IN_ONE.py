@@ -1043,10 +1043,10 @@ def append_registration_to_ftp_csv(reg_data):
         margin-right: auto !important;
     }
     div[data-testid="stElementContainer"]:has(.signtech-statement-top) {
-        margin-bottom: 2px !important;
+        margin-bottom: 0px !important;
     }
     div[data-testid="stElementContainer"]:has(.signtech-statement-bottom) {
-        margin-top: 2px !important;
+        margin-top: 0px !important;
     }
     </style>""", unsafe_allow_html=True)
 
@@ -1062,14 +1062,14 @@ def append_registration_to_ftp_csv(reg_data):
 
         _opening_snippet = (
             f"\n{_body_indent}st.markdown('''\n"
-            f"{_body_indent}<div class=\"signtech-home-statement signtech-statement-top\" style=\"margin-top: 14px; margin-bottom: 18px;\">\n"
+            f"{_body_indent}<div class=\"signtech-home-statement signtech-statement-top\" style=\"margin-top: 14px; margin-bottom: 14px;\">\n"
             f"{_body_indent}    {html.escape(_home_opening_text)}\n"
             f"{_body_indent}</div>\n"
             f"{_body_indent}''', unsafe_allow_html=True)\n"
         )
         _closing_snippet = (
             f"\n{_body_indent}st.markdown('''\n"
-            f"{_body_indent}<div class=\"signtech-home-statement signtech-statement-bottom\" style=\"margin-top: 18px; margin-bottom: 18px;\">\n"
+            f"{_body_indent}<div class=\"signtech-home-statement signtech-statement-bottom\" style=\"margin-top: 0px; margin-bottom: 22px;\">\n"
             f"{_body_indent}    {html.escape(_home_closing_text)}\n"
             f"{_body_indent}</div>\n"
             f"{_body_indent}''', unsafe_allow_html=True)\n"
@@ -1084,8 +1084,8 @@ def append_registration_to_ftp_csv(reg_data):
 
     exec(compile(_site_code,'SIGNTECH_MAIN_12-11-2026_EMBEDDED','exec'),{'__name__':'__main__','__file__':str(ROOT/'SIGNTECH_MAIN_12-11-2026_EMBEDDED')})
 
-    # Selaraskan lebar kedua-dua statement supaya sentiasa menyamai lebar tepat bingkai poster
-    # dan buang ruang kosong berlebihan di bahagian bawah bekas poster
+    # Selaraskan lebar kedua-dua statement supaya menyamai lebar bingkai poster,
+    # dan samakan tepat ruang antara bahagian bawah poster & canvas 2 dengan ruang atas poster
     components.html("""<script>
     (function() {
         const doc = window.parent.document;
@@ -1094,6 +1094,10 @@ def append_registration_to_ftp_csv(reg_data):
             if (!iframes.length) return;
             const posterFrame = iframes[0];
             const posterBox = posterFrame.closest('div[data-testid="stElementContainer"]') || posterFrame.parentElement;
+            const topEl = doc.querySelector('.signtech-statement-top');
+            const bottomEl = doc.querySelector('.signtech-statement-bottom');
+            const bottomBox = bottomEl ? bottomEl.closest('div[data-testid="stElementContainer"]') : null;
+
             if (posterBox) {
                 posterBox.style.transform = 'none';
                 posterBox.style.marginTop = '0px';
@@ -1102,15 +1106,24 @@ def append_registration_to_ftp_csv(reg_data):
                 if (frameRect.height > 120) {
                     posterBox.style.height = Math.round(frameRect.height) + 'px';
                     posterBox.style.minHeight = '0px';
+                    posterBox.style.lineHeight = '0';
                 }
                 if (frameRect.width > 200) {
                     doc.querySelectorAll('.signtech-home-statement').forEach(el => {
                         el.style.maxWidth = Math.round(frameRect.width) + 'px';
                     });
                 }
+                if (topEl && bottomBox) {
+                    const topRect = topEl.getBoundingClientRect();
+                    const desiredGap = Math.max(12, Math.round(frameRect.top - topRect.bottom));
+                    bottomBox.style.marginTop = '0px';
+                    const currentBottomGap = bottomBox.getBoundingClientRect().top - frameRect.bottom;
+                    const adjust = Math.round(desiredGap - currentBottomGap);
+                    bottomBox.style.setProperty('margin-top', adjust + 'px', 'important');
+                }
             }
         }
-        setInterval(syncPosterAndStatements, 250);
+        setInterval(syncPosterAndStatements, 200);
         window.parent.addEventListener('resize', syncPosterAndStatements);
     })();
     </script>""", height=0, width=0)
