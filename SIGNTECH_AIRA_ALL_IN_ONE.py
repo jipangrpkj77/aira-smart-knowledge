@@ -292,6 +292,9 @@ ALLOWED_SHEETS = {
     'about_statements': ('15bH_yee0Df3k6S8kCWgISfA0WcRUTV5vTjquG7e6L-I', 'about'),
 }
 
+# Google Sheet ID untuk Canvas Ayat Pembuka (Row 1) & Ayat Penutup (Row 2)
+HOME_CANVAS_SHEET_ID = '1mskBV29cpvC5ABH8z6yLOfo9WmLK-Or4xM7rVoh_oY4'
+
 DENY = re.compile(r'(?i)(password|passwd|secret|api[_ -]?key|token|ftp_pass|ftp_user|private[_ -]?key|credential|BEGIN [A-Z ]*PRIVATE KEY|sk-proj-|sk-[A-Za-z0-9]{15,})')
 EMAIL = re.compile(r'(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b')
 PHONE = re.compile(r'(?<!\d)(?:\+?60|0)1\d[ -]?\d{3,4}[ -]?\d{4}(?!\d)')
@@ -822,6 +825,45 @@ def chat_failure(lang):
 def render_app():
     import streamlit as st
     import streamlit.components.v1 as components
+
+    @st.cache_data(ttl=300, show_spinner=False)
+    def fetch_home_statements():
+        """Tarik Ayat Pembuka (Row 1) dan Ayat Penutup (Row 2) daripada Google Sheet."""
+        default_opening = (
+            "Welcome to Signtech Solution, your trusted partner in bridging the technical skills gap and "
+            "accelerating digital transformation. We specialize in delivering high-impact, practical training "
+            "programs tailored to modern industry demands across AI & Data Science, Software Development, and "
+            "Engineering. As a certified HRD Corp Registered Training Provider offering HRD Corp Claimable courses, "
+            "we combine deep industry expertise with hands-on methodologies led by seasoned practitioners to equip "
+            "your workforce with actionable skills that drive operational efficiency and innovation. Explore our "
+            "comprehensive course catalog below and take the next decisive step toward elevating your organization’s "
+            "technical capabilities."
+        )
+        default_closing = (
+            "Ready to future-proof your career or empower your organization with high-demand technical expertise? "
+            "Don’t miss the opportunity to learn directly from industry practitioners through our interactive, "
+            "HRD Corp Claimable workshops. Seats are limited to ensure personalized guidance and maximum hands-on "
+            "impact. Secure your spot today via the registration menu above, or reach out to our team directly via "
+            "WhatsApp or email at admin@signtech.my for customized corporate training inquiries."
+        )
+        try:
+            rows = download_csv(HOME_CANVAS_SHEET_ID)
+            extracted = []
+            for r in rows:
+                # Cari sel yang mempunyai teks panjang (menyokong susunan sama ada di Col A atau Col B)
+                candidates = [
+                    WHITESPACE.sub(' ', str(c)).strip()
+                    for c in r
+                    if len(WHITESPACE.sub(' ', str(c)).strip()) > 35
+                ]
+                if candidates:
+                    extracted.append(max(candidates, key=len))
+            opening_text = extracted[0] if len(extracted) >= 1 else default_opening
+            closing_text = extracted[1] if len(extracted) >= 2 else default_closing
+            return opening_text, closing_text
+        except Exception:
+            return default_opening, default_closing
+
     @st.cache_resource(show_spinner=False)
     def runtime():
         # Keep a single sync worker and the same function globals across reruns.
@@ -864,6 +906,9 @@ def render_app():
         os.environ['FTP_USER'] = 'tukangfx'
     if not os.environ.get('FTP_PASS', '').strip():
         os.environ['FTP_PASS'] = 'Signtech2025!'
+
+    # Tarik kandungan Ayat Pembuka (Row 1) & Ayat Penutup (Row 2) daripada Google Sheet
+    _home_opening_text, _home_closing_text = fetch_home_statements()
 
     # Suntik fungsi FTP yang sah tepat sebelum blok paparan borang dijalankan
     _ftp_override_code = '''
@@ -981,42 +1026,64 @@ def append_registration_to_ftp_csv(reg_data):
     else:
         _site_code = _raw_site + "\n" + _ftp_override_code
 
+    # Suntik Ayat Pembuka (Row 1) di antara bar butang & canvas poster,
+    # serta Ayat Penutup (Row 2) di antara canvas poster & footer pada halaman Home
+    _home_branch_match = re.search(r'(?m)^([ \t]*)if\s+current_page\s*==\s*[\'"]Home[\'"]\s*:', _site_code)
+    if _home_branch_match:
+        _indent = _home_branch_match.group(1)
+        _body_indent = _indent + "    "
+        _home_start = _home_branch_match.end()
+        _next_branch = re.search(rf'(?m)^{re.escape(_indent)}(?:elif|else)\b', _site_code[_home_start:])
+        _home_end = _home_start + _next_branch.start() if _next_branch else len(_site_code)
+
+        _opening_snippet = (
+            f"\n{_body_indent}st.markdown('''\n"
+            f"{_body_indent}<div style=\"max-width: 920px; margin: 22px auto 26px auto; padding: 0 18px; text-align: center;\">\n"
+            f"{_body_indent}    <p style=\"color: #F3F4F6; font-size: 16.5px; line-height: 1.78; font-weight: 400; letter-spacing: 0.2px; margin: 0;\">\n"
+            f"{_body_indent}        {html.escape(_home_opening_text)}\n"
+            f"{_body_indent}    </p>\n"
+            f"{_body_indent}</div>\n"
+            f"{_body_indent}''', unsafe_allow_html=True)\n"
+        )
+        _closing_snippet = (
+            f"\n{_body_indent}st.markdown('''\n"
+            f"{_body_indent}<div style=\"max-width: 880px; margin: 28px auto 24px auto; padding: 0 18px; text-align: center;\">\n"
+            f"{_body_indent}    <p style=\"color: #E5E7EB; font-size: 15.8px; line-height: 1.75; font-weight: 400; letter-spacing: 0.2px; margin: 0;\">\n"
+            f"{_body_indent}        {html.escape(_home_closing_text)}\n"
+            f"{_body_indent}    </p>\n"
+            f"{_body_indent}</div>\n"
+            f"{_body_indent}''', unsafe_allow_html=True)\n"
+        )
+        _site_code = (
+            _site_code[:_home_start]
+            + _opening_snippet
+            + _site_code[_home_start:_home_end]
+            + _closing_snippet
+            + _site_code[_home_end:]
+        )
+
     exec(compile(_site_code,'SIGNTECH_MAIN_12-11-2026_EMBEDDED','exec'),{'__name__':'__main__','__file__':str(ROOT/'SIGNTECH_MAIN_12-11-2026_EMBEDDED')})
-    # Menyeimbangkan kedudukan menegak canvas poster supaya jarak atas (dari bar butang)
-    # sama tepat dengan jarak bawah (ke bahagian atas footer)
+
+    # Kekalkan keselarasan susun atur canvas poster tanpa bertindih dengan ayat pembuka & penutup
     components.html("""<script>
     (function() {
         const doc = window.parent.document;
-        function centerPoster() {
+        function resetPosterTransform() {
             const iframes = Array.from(doc.querySelectorAll('iframe')).filter(f => !f.title.includes('aira_cloud_widget') && f.offsetHeight > 120);
             if (!iframes.length) return;
             const posterFrame = iframes[0];
             const posterBox = posterFrame.closest('div[data-testid="stElementContainer"]') || posterFrame.parentElement;
-            const navBlock = doc.querySelector('div[data-testid="stHorizontalBlock"]');
-            const allBlocks = Array.from(doc.querySelectorAll('div[data-testid="stElementContainer"]'));
-            const footerBox = allBlocks.reverse().find(el => el.innerText && el.innerText.includes("Let's Build Skills"));
-            if (!posterBox || !navBlock || !footerBox) return;
-
-            posterBox.style.marginTop = '0px';
-            posterBox.style.marginBottom = '0px';
-
-            const navBottom = navBlock.getBoundingClientRect().bottom;
-            const footerTop = footerBox.getBoundingClientRect().top;
-            const posterRect = posterBox.getBoundingClientRect();
-            const availableSpace = footerTop - navBottom;
-            if (availableSpace > posterRect.height) {
-                const equalGap = (availableSpace - posterRect.height) / 2;
-                const currentTopGap = posterRect.top - navBottom;
-                const offset = equalGap - currentTopGap;
-                posterBox.style.transform = `translateY(${Math.round(offset)}px)`;
-            } else {
+            if (posterBox) {
                 posterBox.style.transform = 'none';
+                posterBox.style.marginTop = '0px';
+                posterBox.style.marginBottom = '0px';
             }
         }
-        setInterval(centerPoster, 250);
-        window.parent.addEventListener('resize', centerPoster);
+        setInterval(resetPosterTransform, 300);
+        window.parent.addEventListener('resize', resetPosterTransform);
     })();
     </script>""", height=0, width=0)
+
     r=runtime()
     widget=components.declare_component('aira_cloud_widget',path=str(ROOT/'web'))
     st.markdown("""<style>
