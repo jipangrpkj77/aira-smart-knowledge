@@ -1090,13 +1090,15 @@ def append_registration_to_ftp_csv(reg_data):
     (function() {
         const doc = window.parent.document;
         function syncPosterAndStatements() {
+            const topEl = doc.querySelector('.signtech-statement-top');
+            const bottomEl = doc.querySelector('.signtech-statement-bottom');
+            if (!topEl || !bottomEl) return;
+
             const iframes = Array.from(doc.querySelectorAll('iframe')).filter(f => !f.title.includes('aira_cloud_widget') && f.offsetHeight > 120);
             if (!iframes.length) return;
             const posterFrame = iframes[0];
             const posterBox = posterFrame.closest('div[data-testid="stElementContainer"]') || posterFrame.parentElement;
-            const topEl = doc.querySelector('.signtech-statement-top');
-            const bottomEl = doc.querySelector('.signtech-statement-bottom');
-            const bottomBox = bottomEl ? bottomEl.closest('div[data-testid="stElementContainer"]') : null;
+            const bottomBox = bottomEl.closest('div[data-testid="stElementContainer"]');
 
             if (posterBox) {
                 posterBox.style.transform = 'none';
@@ -1113,7 +1115,7 @@ def append_registration_to_ftp_csv(reg_data):
                         el.style.maxWidth = Math.round(frameRect.width) + 'px';
                     });
                 }
-                if (topEl && bottomBox) {
+                if (bottomBox) {
                     const topRect = topEl.getBoundingClientRect();
                     const desiredGap = Math.max(12, Math.round(frameRect.top - topRect.bottom));
                     bottomBox.style.marginTop = '0px';
