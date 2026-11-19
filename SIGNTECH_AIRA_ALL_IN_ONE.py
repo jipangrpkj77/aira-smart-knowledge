@@ -851,26 +851,38 @@ def render_app():
         if st.button('Sync Now'):
             with st.spinner('Sync…'):st.json(r['sync'](include_remote=True))
         return
-    # Salin semua tetapan daripada st.secrets ke os.environ supaya kod website dapat membacanya (termasuk FTP_HOST, FTP_USER, FTP_PASS)
+    # Salin semua tetapan daripada st.secrets ke os.environ supaya kod website dapat membacanya
     try:
         for _k, _v in st.secrets.items():
-            if isinstance(_v, (str, int, float, bool)):
-                os.environ.setdefault(str(_k), str(_v))
+            if isinstance(_v, (str, int, float, bool)) and str(_v).strip():
+                os.environ[str(_k)] = str(_v)
     except Exception:
         pass
-    os.environ.setdefault('FTP_HOST', 'sp162.mschosting.cloud')
-    os.environ.setdefault('FTP_USER', 'tukangfx')
-    os.environ.setdefault('FTP_PASS', 'Signtech2025!')
-    # Website content and business logic retained; V4.4 adds scoped CSS and public CSV caching.
-    _site_code = website_source() + '''
+    if not os.environ.get('FTP_HOST', '').strip():
+        os.environ['FTP_HOST'] = 'sp162.mschosting.cloud'
+    if not os.environ.get('FTP_USER', '').strip():
+        os.environ['FTP_USER'] = 'tukangfx'
+    if not os.environ.get('FTP_PASS', '').strip():
+        os.environ['FTP_PASS'] = 'Signtech2025!'
+
+    # Suntik fungsi FTP yang sah tepat sebelum blok paparan borang dijalankan
+    _ftp_override_code = '''
 from datetime import datetime
 from ftplib import FTP
 
+FTP_HOST = os.environ.get("FTP_HOST") or "sp162.mschosting.cloud"
+FTP_USER = os.environ.get("FTP_USER") or "tukangfx"
+FTP_PASS = os.environ.get("FTP_PASS") or "Signtech2025!"
+REMOTE_EVIDENCES_DIR = "httpdocs/Trainer"
+REMOTE_WORKSHOP_DIR = "httpdocs/Workshop"
+CSV_FILENAME = "list_of_trainers.csv"
+REGISTRATION_FILENAME = "registration.csv"
+
 def append_trainer_to_ftp_csv(trainer_data, cv_file=None):
     try:
-        ftp = FTP(os.environ.get("FTP_HOST", "sp162.mschosting.cloud"))
-        ftp.login(os.environ.get("FTP_USER", "tukangfx"), os.environ.get("FTP_PASS", "Signtech2025!"))
-        for folder in "httpdocs/Trainer".split("/"):
+        ftp = FTP(FTP_HOST)
+        ftp.login(FTP_USER, FTP_PASS)
+        for folder in REMOTE_EVIDENCES_DIR.split("/"):
             if folder:
                 try:
                     ftp.cwd(folder)
@@ -884,7 +896,7 @@ def append_trainer_to_ftp_csv(trainer_data, cv_file=None):
         existing_content = io.BytesIO()
         file_exists = False
         try:
-            ftp.retrbinary("RETR list_of_trainers.csv", existing_content.write)
+            ftp.retrbinary(f"RETR {CSV_FILENAME}", existing_content.write)
             file_exists = True
         except Exception:
             file_exists = False
@@ -907,7 +919,7 @@ def append_trainer_to_ftp_csv(trainer_data, cv_file=None):
             "Areas of Expertise": trainer_data.get("expertise", ""),
             "Certifications": trainer_data.get("certifications", ""),
         })
-        ftp.storbinary("STOR list_of_trainers.csv", io.BytesIO(out_buffer.getvalue().encode("utf-8")))
+        ftp.storbinary(f"STOR {CSV_FILENAME}", io.BytesIO(out_buffer.getvalue().encode("utf-8")))
         ftp.quit()
         return True, "Success"
     except Exception as e:
@@ -915,9 +927,9 @@ def append_trainer_to_ftp_csv(trainer_data, cv_file=None):
 
 def append_registration_to_ftp_csv(reg_data):
     try:
-        ftp = FTP(os.environ.get("FTP_HOST", "sp162.mschosting.cloud"))
-        ftp.login(os.environ.get("FTP_USER", "tukangfx"), os.environ.get("FTP_PASS", "Signtech2025!"))
-        for folder in "httpdocs/Workshop".split("/"):
+        ftp = FTP(FTP_HOST)
+        ftp.login(FTP_USER, FTP_PASS)
+        for folder in REMOTE_WORKSHOP_DIR.split("/"):
             if folder:
                 try:
                     ftp.cwd(folder)
@@ -927,7 +939,7 @@ def append_registration_to_ftp_csv(reg_data):
         existing_content = io.BytesIO()
         file_exists = False
         try:
-            ftp.retrbinary("RETR registration.csv", existing_content.write)
+            ftp.retrbinary(f"RETR {REGISTRATION_FILENAME}", existing_content.write)
             file_exists = True
         except Exception:
             file_exists = False
@@ -956,12 +968,19 @@ def append_registration_to_ftp_csv(reg_data):
             "Academic Qualification": reg_data.get("academic_status", ""),
             "Payment Method": reg_data.get("payment_method", ""),
         })
-        ftp.storbinary("STOR registration.csv", io.BytesIO(out_buffer.getvalue().encode("utf-8")))
+        ftp.storbinary(f"STOR {REGISTRATION_FILENAME}", io.BytesIO(out_buffer.getvalue().encode("utf-8")))
         ftp.quit()
         return True, "Success"
     except Exception as e:
         return False, str(e)
 '''
+    _raw_site = website_source()
+    _target_anchor = "current_page = st.session_state.selected_page"
+    if _target_anchor in _raw_site:
+        _site_code = _raw_site.replace(_target_anchor, _ftp_override_code + "\n" + _target_anchor, 1)
+    else:
+        _site_code = _raw_site + "\n" + _ftp_override_code
+
     exec(compile(_site_code,'SIGNTECH_MAIN_12-11-2026_EMBEDDED','exec'),{'__name__':'__main__','__file__':str(ROOT/'SIGNTECH_MAIN_12-11-2026_EMBEDDED')})
     # Menyeimbangkan kedudukan menegak canvas poster supaya jarak atas (dari bar butang)
     # sama tepat dengan jarak bawah (ke bahagian atas footer)
