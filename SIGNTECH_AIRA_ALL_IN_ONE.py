@@ -1084,45 +1084,100 @@ def append_registration_to_ftp_csv(reg_data):
 
     exec(compile(_site_code,'SIGNTECH_MAIN_12-11-2026_EMBEDDED','exec'),{'__name__':'__main__','__file__':str(ROOT/'SIGNTECH_MAIN_12-11-2026_EMBEDDED')})
 
-    # Selaraskan lebar kedua-dua statement supaya menyamai lebar bingkai poster,
-    # dan samakan tepat ruang antara bahagian bawah poster & canvas 2 dengan ruang atas poster
+    # Selaraskan lebar kedua-dua statement supaya menyamai lebar bingkai poster pada halaman Home,
+    # serta pastikan ruang antara setiap banner pada halaman Courses kekal seragam (termasuk banner baharu)
     components.html("""<script>
     (function() {
         const doc = window.parent.document;
         function syncPosterAndStatements() {
             const topEl = doc.querySelector('.signtech-statement-top');
             const bottomEl = doc.querySelector('.signtech-statement-bottom');
-            if (!topEl || !bottomEl) return;
+            if (topEl && bottomEl) {
+                const iframes = Array.from(doc.querySelectorAll('iframe')).filter(f => !f.title.includes('aira_cloud_widget') && f.offsetHeight > 120);
+                if (!iframes.length) return;
+                const posterFrame = iframes[0];
+                const posterBox = posterFrame.closest('div[data-testid="stElementContainer"]') || posterFrame.parentElement;
+                const bottomBox = bottomEl.closest('div[data-testid="stElementContainer"]');
 
-            const iframes = Array.from(doc.querySelectorAll('iframe')).filter(f => !f.title.includes('aira_cloud_widget') && f.offsetHeight > 120);
-            if (!iframes.length) return;
-            const posterFrame = iframes[0];
-            const posterBox = posterFrame.closest('div[data-testid="stElementContainer"]') || posterFrame.parentElement;
-            const bottomBox = bottomEl.closest('div[data-testid="stElementContainer"]');
-
-            if (posterBox) {
-                posterBox.style.transform = 'none';
-                posterBox.style.marginTop = '0px';
-                posterBox.style.marginBottom = '0px';
-                const frameRect = posterFrame.getBoundingClientRect();
-                if (frameRect.height > 120) {
-                    posterBox.style.height = Math.round(frameRect.height) + 'px';
-                    posterBox.style.minHeight = '0px';
-                    posterBox.style.lineHeight = '0';
+                if (posterBox) {
+                    posterBox.style.transform = 'none';
+                    posterBox.style.marginTop = '0px';
+                    posterBox.style.marginBottom = '0px';
+                    const frameRect = posterFrame.getBoundingClientRect();
+                    if (frameRect.height > 120) {
+                        posterBox.style.height = Math.round(frameRect.height) + 'px';
+                        posterBox.style.minHeight = '0px';
+                        posterBox.style.lineHeight = '0';
+                    }
+                    if (frameRect.width > 200) {
+                        doc.querySelectorAll('.signtech-home-statement').forEach(el => {
+                            el.style.maxWidth = Math.round(frameRect.width) + 'px';
+                        });
+                    }
+                    if (bottomBox) {
+                        const topRect = topEl.getBoundingClientRect();
+                        const desiredGap = Math.max(12, Math.round(frameRect.top - topRect.bottom));
+                        bottomBox.style.marginTop = '0px';
+                        const currentBottomGap = bottomBox.getBoundingClientRect().top - frameRect.bottom;
+                        const adjust = Math.round(desiredGap - currentBottomGap);
+                        bottomBox.style.setProperty('margin-top', adjust + 'px', 'important');
+                    }
                 }
-                if (frameRect.width > 200) {
-                    doc.querySelectorAll('.signtech-home-statement').forEach(el => {
-                        el.style.maxWidth = Math.round(frameRect.width) + 'px';
+                return;
+            }
+
+            // Pada halaman Courses: pastikan semua baris banner kursus mempunyai ruang standard yang seragam
+            // (membuang sisa ketinggian/margin berlebihan pada bekas pertama dan mana-mana banner tambahan)
+            const detailBtns = Array.from(doc.querySelectorAll('button')).filter(b => b.innerText && b.innerText.trim() === 'Details');
+            if (detailBtns.length > 0) {
+                const courseRows = [];
+                detailBtns.forEach(btn => {
+                    const rowBlock = btn.closest('div[data-testid="stHorizontalBlock"]');
+                    if (rowBlock && !courseRows.includes(rowBlock)) {
+                        courseRows.push(rowBlock);
+                    }
+                });
+
+                courseRows.forEach((row, idx) => {
+                    const rowWrapper = row.closest('div[data-testid="stElementContainer"]') || row.parentElement;
+                    if (rowWrapper) {
+                        rowWrapper.style.removeProperty('height');
+                        rowWrapper.style.removeProperty('min-height');
+                        rowWrapper.style.removeProperty('transform');
+                        rowWrapper.style.setProperty('margin-top', '0px', 'important');
+                        rowWrapper.style.setProperty('margin-bottom', '14px', 'important');
+                    }
+                    row.querySelectorAll('div[data-testid="stElementContainer"], iframe').forEach(el => {
+                        if (el.tagName === 'IFRAME') {
+                            const rect = el.getBoundingClientRect();
+                            if (rect.height > 40) {
+                                const box = el.closest('div[data-testid="stElementContainer"]');
+                                if (box) {
+                                    box.style.setProperty('height', Math.round(rect.height) + 'px', 'important');
+                                    box.style.setProperty('min-height', '0px', 'important');
+                                    box.style.setProperty('margin-bottom', '0px', 'important');
+                                }
+                            }
+                        } else {
+                            el.style.removeProperty('min-height');
+                        }
                     });
-                }
-                if (bottomBox) {
-                    const topRect = topEl.getBoundingClientRect();
-                    const desiredGap = Math.max(12, Math.round(frameRect.top - topRect.bottom));
-                    bottomBox.style.marginTop = '0px';
-                    const currentBottomGap = bottomBox.getBoundingClientRect().top - frameRect.bottom;
-                    const adjust = Math.round(desiredGap - currentBottomGap);
-                    bottomBox.style.setProperty('margin-top', adjust + 'px', 'important');
-                }
+
+                    // Sembunyikan sebarang elemen pemisah kosong (spacer) di antara baris banner kursus
+                    if (rowWrapper && idx < courseRows.length - 1) {
+                        let nextEl = rowWrapper.nextElementSibling;
+                        const nextRowWrapper = courseRows[idx + 1].closest('div[data-testid="stElementContainer"]') || courseRows[idx + 1].parentElement;
+                        while (nextEl && nextEl !== nextRowWrapper) {
+                            const hasVisibleContent = nextEl.querySelector('img, iframe, button, input, table, h1, h2, h3, p');
+                            if (!hasVisibleContent) {
+                                nextEl.style.setProperty('display', 'none', 'important');
+                                nextEl.style.setProperty('height', '0px', 'important');
+                                nextEl.style.setProperty('margin', '0px', 'important');
+                            }
+                            nextEl = nextEl.nextElementSibling;
+                        }
+                    }
+                });
             }
         }
         setInterval(syncPosterAndStatements, 200);
