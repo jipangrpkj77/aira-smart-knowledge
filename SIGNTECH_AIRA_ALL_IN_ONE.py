@@ -631,6 +631,7 @@ def answer_course_list(lang):
 
 
 # ====================== CLOUD AI ROUTER ======================
+import requests
 import secrets
 from concurrent.futures import ThreadPoolExecutor
 from urllib.error import HTTPError, URLError
@@ -656,10 +657,16 @@ def configured_providers():
     return list(dict.fromkeys(p for p in order if p in DEFAULT_MODELS and setting(p.upper()+'_API_KEY', DEFAULT_GROQ_API_KEY)))
 
 def api_json(url, payload, headers):
-    request=Request(url, data=json.dumps(payload,ensure_ascii=False).encode('utf-8'),
-                    headers={'Content-Type':'application/json','User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',**headers},method='POST')
-    with urlopen(request,timeout=25) as response:
-        return json.loads(response.read(1_000_000))
+    req_headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        **headers
+    }
+    resp = requests.post(url, json=payload, headers=req_headers, timeout=25)
+    if not resp.ok:
+        raise RuntimeError(f"HTTP {resp.status_code}: {resp.text[:300]}")
+    return resp.json()
 
 def cloud_generate(provider, system, question):
     model=setting(provider.upper()+'_MODEL',DEFAULT_MODELS[provider])
@@ -751,7 +758,7 @@ def probe_providers(config):
                 state='ok' if answer else 'empty_response'
                 record_provider(provider,state);result[provider]={'status':state}
             except Exception as exc:
-                state=type(exc).__name__;code=getattr(exc,'code',None)
+                state=str(exc);code=getattr(exc,'code',None)
                 record_provider(provider,state,code);result[provider]={'status':state,'http_status':code}
         return result
     finally:del _WORKER_CONFIG.values
