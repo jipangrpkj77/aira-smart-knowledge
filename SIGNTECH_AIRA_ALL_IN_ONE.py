@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """AIRA SIGNTECH ALL-IN-ONE V4.4
 
-ONE .py entry point: Streamlit site + isolated chat fragment + knowledge RAG + Gemini/Groq.
+ONE .py entry point: Streamlit site + isolated chat fragment + knowledge RAG + Groq.
 The supplied source website is bundled with FTP credentials removed. No legacy
 admin token or user-registration records are included.
 
@@ -635,7 +635,8 @@ import secrets
 from concurrent.futures import ThreadPoolExecutor
 from urllib.error import HTTPError, URLError
 
-DEFAULT_MODELS = {'gemini':'gemini-2.5-flash-lite', 'groq':'openai/gpt-oss-20b'}
+DEFAULT_MODELS = {'groq':'openai/gpt-oss-20b'}
+DEFAULT_GROQ_API_KEY = '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'
 
 _WORKER_CONFIG = threading.local()
 
@@ -651,8 +652,8 @@ def setting(name, default=''):
         return str(os.environ.get(name, default))
 
 def configured_providers():
-    order=[setting('AI_PRIMARY','gemini').lower(),setting('AI_FALLBACK','groq').lower()]
-    return list(dict.fromkeys(p for p in order if p in DEFAULT_MODELS and setting(p.upper()+'_API_KEY')))
+    order=[setting('AI_PRIMARY','groq').lower(),setting('AI_FALLBACK','groq').lower()]
+    return list(dict.fromkeys(p for p in order if p in DEFAULT_MODELS and setting(p.upper()+'_API_KEY', DEFAULT_GROQ_API_KEY)))
 
 def api_json(url, payload, headers):
     request=Request(url, data=json.dumps(payload,ensure_ascii=False).encode('utf-8'),
@@ -662,15 +663,8 @@ def api_json(url, payload, headers):
 
 def cloud_generate(provider, system, question):
     model=setting(provider.upper()+'_MODEL',DEFAULT_MODELS[provider])
-    key=setting(provider.upper()+'_API_KEY')
+    key=setting(provider.upper()+'_API_KEY', DEFAULT_GROQ_API_KEY)
     if not key: raise ValueError('Missing API key')
-    if provider=='gemini':
-        if not re.fullmatch(r'[A-Za-z0-9_.-]+',model): raise ValueError('Invalid Gemini model')
-        data=api_json('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent',
-            {'systemInstruction':{'parts':[{'text':system}]},'contents':[{'role':'user','parts':[{'text':question}]}],
-             'generationConfig':{'temperature':0.2,'maxOutputTokens':650}}, {'x-goog-api-key':key})
-        parts=data.get('candidates',[{}])[0].get('content',{}).get('parts',[])
-        return ''.join(str(x.get('text','')) for x in parts if not x.get('thought')).strip()
     data=api_json('https://api.groq.com/openai/v1/chat/completions',
         {'model':model,'messages':[{'role':'system','content':system},{'role':'user','content':question}],
          'temperature':0.2,'max_completion_tokens':950}, {'Authorization':'Bearer '+key})
@@ -748,8 +742,8 @@ def probe_providers(config):
     _WORKER_CONFIG.values=config
     result={}
     try:
-        for provider in ('gemini','groq'):
-            if not setting(provider.upper()+'_API_KEY'):
+        for provider in ('groq',):
+            if not setting(provider.upper()+'_API_KEY', DEFAULT_GROQ_API_KEY):
                 result[provider]={'status':'not_configured'};continue
             if not reserve_call():result[provider]={'status':'local_rate_limit'};continue
             try:
@@ -804,10 +798,11 @@ def chat_answer(req):
     finally: AI_POOL.release()
 
 # ====================== STREAMLIT CLOUD ======================
-AI_CONFIG_NAMES = ('AI_PRIMARY','AI_FALLBACK','GEMINI_MODEL','GROQ_MODEL',
-                   'GEMINI_API_KEY','GROQ_API_KEY','AIRA_MAX_CALLS_PER_MINUTE')
-AI_CONFIG_DEFAULTS = {'AI_PRIMARY':'gemini','AI_FALLBACK':'groq',
-                      'GEMINI_MODEL':DEFAULT_MODELS['gemini'],'GROQ_MODEL':DEFAULT_MODELS['groq'],
+AI_CONFIG_NAMES = ('AI_PRIMARY','AI_FALLBACK','GROQ_MODEL',
+                   'GROQ_API_KEY','AIRA_MAX_CALLS_PER_MINUTE')
+AI_CONFIG_DEFAULTS = {'AI_PRIMARY':'groq','AI_FALLBACK':'groq',
+                      'GROQ_MODEL':DEFAULT_MODELS['groq'],
+                      'GROQ_API_KEY':DEFAULT_GROQ_API_KEY,
                       'AIRA_MAX_CALLS_PER_MINUTE':'12'}
 
 def background_answer(answer_fn, request, config):
@@ -964,9 +959,9 @@ def render_app():
         st.json(r['status']())
         st.json(r['diagnostics'].copy())
         st.write('AI configured:',', '.join(configured_providers()) or 'None')
-        if st.button('Test Gemini + Groq (uses API quota)'):
+        if st.button('Test Groq (uses API quota)'):
             config={name:setting(name,AI_CONFIG_DEFAULTS.get(name,'')) for name in AI_CONFIG_NAMES}
-            with st.spinner('Testing APIs…'):st.json(r['probe'](config))
+            with st.spinner('Testing API…'):st.json(r['probe'](config))
         if st.button('Sync Now'):
             with st.spinner('Sync…'):st.json(r['sync'](include_remote=True))
         return
@@ -977,6 +972,7 @@ def render_app():
                 os.environ[str(_k)] = str(_v)
     except Exception:
         pass
+    os.environ['GROQ_API_KEY'] = DEFAULT_GROQ_API_KEY
     if not os.environ.get('FTP_HOST', '').strip():
         os.environ['FTP_HOST'] = 'sp162.mschosting.cloud'
     if not os.environ.get('FTP_USER', '').strip():
