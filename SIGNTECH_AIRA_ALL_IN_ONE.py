@@ -1280,6 +1280,7 @@ def append_registration_to_ftp_csv(reg_data):
     iframe[title$="aira_cloud_widget"]{position:fixed!important;right:0!important;bottom:0!important;width:min(420px,100vw)!important;z-index:999999!important;background:transparent!important;border:0!important;max-height:100dvh!important;}
     div[data-testid="stElementContainer"]:has(iframe[title$="aira_cloud_widget"]){height:0!important;min-height:0!important;overflow:visible!important;opacity:1!important;}
     div[data-testid="stElementContainer"]:has(iframe[title$="aira_cloud_widget"]) iframe{opacity:1!important;}
+    footer, [data-testid="stFooter"], [data-testid="stBottomBlockContainer"] footer, .stApp footer, #MainMenu {display:none!important;visibility:hidden!important;height:0!important;}
     </style>""",unsafe_allow_html=True)
     @st.fragment
     def chat_fragment():
