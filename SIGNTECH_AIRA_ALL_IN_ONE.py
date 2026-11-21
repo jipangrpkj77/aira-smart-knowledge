@@ -1101,8 +1101,33 @@ def append_registration_to_ftp_csv(reg_data):
 '''
     _raw_site = website_source()
     _target_anchor = "current_page = st.session_state.selected_page"
+    _route_sync_code = '''
+_SLUG_TO_PAGE = {
+    "": "Home",
+    "home": "Home",
+    "about": "About",
+    "courses": "Courses",
+    "hrd-corp": "HRD Corp",
+    "trainer": "Trainer",
+    "testimonials": "Testimonials",
+    "registration": "Registration",
+}
+_PAGE_TO_SLUG = {
+    "Home": "/",
+    "About": "/about",
+    "Courses": "/courses",
+    "HRD Corp": "/hrd-corp",
+    "Trainer": "/trainer",
+    "Testimonials": "/testimonials",
+    "Registration": "/registration",
+}
+_qp_page = str(st.query_params.get("page", "")).strip().strip("/").lower()
+if _qp_page in _SLUG_TO_PAGE and st.session_state.get("_init_route_applied") != _qp_page:
+    st.session_state.selected_page = _SLUG_TO_PAGE[_qp_page]
+    st.session_state["_init_route_applied"] = _qp_page
+'''
     if _target_anchor in _raw_site:
-        _site_code = _raw_site.replace(_target_anchor, _ftp_override_code + "\n" + _target_anchor, 1)
+        _site_code = _raw_site.replace(_target_anchor, _ftp_override_code + "\n" + _route_sync_code + "\n" + _target_anchor, 1)
     else:
         _site_code = _raw_site + "\n" + _ftp_override_code
 
@@ -1168,110 +1193,170 @@ def append_registration_to_ftp_csv(reg_data):
 
     exec(compile(_site_code,'SIGNTECH_MAIN_12-11-2026_EMBEDDED','exec'),{'__name__':'__main__','__file__':str(ROOT/'SIGNTECH_MAIN_12-11-2026_EMBEDDED')})
 
+    _active_slug_map = {
+        'Home': '/',
+        'About': '/about',
+        'Courses': '/courses',
+        'HRD Corp': '/hrd-corp',
+        'Trainer': '/trainer',
+        'Testimonials': '/testimonials',
+        'Registration': '/registration',
+    }
+    _current_subpath = _active_slug_map.get(str(st.session_state.get('selected_page', 'Home')), '/')
+
     # Selaraskan lebar kedua-dua statement supaya menyamai lebar bingkai poster pada halaman Home,
     # serta pastikan ruang antara setiap banner pada halaman Courses kekal seragam (termasuk banner baharu)
-    components.html("""<script>
-    (function() {
+    components.html(f"""<script>
+    (function() {{
         const doc = window.parent.document;
-        function syncPosterAndStatements() {
+        const targetSubpath = {json.dumps(_current_subpath)};
+
+        function syncSubAddress() {{
+            try {{
+                if (window.top && window.top !== window.parent) {{
+                    window.top.postMessage({{ type: 'SIGNTECH_ROUTE_CHANGE', path: targetSubpath }}, '*');
+                }} else {{
+                    const currentPath = window.parent.location.pathname || '/';
+                    if (currentPath !== targetSubpath) {{
+                        window.parent.history.replaceState({{ page: targetSubpath }}, '', targetSubpath);
+                    }}
+                }}
+            }} catch (e) {{
+                if (window.top) {{
+                    window.top.postMessage({{ type: 'SIGNTECH_ROUTE_CHANGE', path: targetSubpath }}, '*');
+                }}
+            }}
+        }}
+        syncSubAddress();
+
+        const navRoutes = {{
+            'home': '/',
+            'about': '/about',
+            'courses': '/courses',
+            'hrd corp': '/hrd-corp',
+            'trainer': '/trainer',
+            'testimonials': '/testimonials',
+            'registration': '/registration'
+        }};
+        doc.addEventListener('click', function(ev) {{
+            const btn = ev.target.closest('button');
+            if (!btn) return;
+            const label = (btn.innerText || '').trim().toLowerCase();
+            if (Object.prototype.hasOwnProperty.call(navRoutes, label)) {{
+                const nextPath = navRoutes[label];
+                try {{
+                    if (window.top && window.top !== window.parent) {{
+                        window.top.postMessage({{ type: 'SIGNTECH_ROUTE_CHANGE', path: nextPath }}, '*');
+                    }} else {{
+                        window.parent.history.pushState({{ page: nextPath }}, '', nextPath);
+                    }}
+                }} catch (e) {{
+                    if (window.top) {{
+                        window.top.postMessage({{ type: 'SIGNTECH_ROUTE_CHANGE', path: nextPath }}, '*');
+                    }}
+                }}
+            }}
+        }}, true);
+
+        function syncPosterAndStatements() {{
             const topEl = doc.querySelector('.signtech-statement-top');
             const bottomEl = doc.querySelector('.signtech-statement-bottom');
-            if (topEl && bottomEl) {
+            if (topEl && bottomEl) {{
                 const iframes = Array.from(doc.querySelectorAll('iframe')).filter(f => !f.title.includes('aira_cloud_widget') && f.offsetHeight > 120);
                 if (!iframes.length) return;
                 const posterFrame = iframes[0];
                 const posterBox = posterFrame.closest('div[data-testid="stElementContainer"]') || posterFrame.parentElement;
                 const bottomBox = bottomEl.closest('div[data-testid="stElementContainer"]');
 
-                if (posterBox) {
+                if (posterBox) {{
                     posterBox.style.transform = 'none';
                     posterBox.style.marginTop = '0px';
                     posterBox.style.marginBottom = '0px';
                     const frameRect = posterFrame.getBoundingClientRect();
-                    if (frameRect.height > 120) {
+                    if (frameRect.height > 120) {{
                         posterBox.style.height = Math.round(frameRect.height) + 'px';
                         posterBox.style.minHeight = '0px';
                         posterBox.style.lineHeight = '0';
-                    }
-                    if (frameRect.width > 200) {
-                        doc.querySelectorAll('.signtech-home-statement').forEach(el => {
+                    }}
+                    if (frameRect.width > 200) {{
+                        doc.querySelectorAll('.signtech-home-statement').forEach(el => {{
                             el.style.maxWidth = Math.round(frameRect.width) + 'px';
-                        });
-                    }
-                    if (bottomBox) {
+                        }});
+                    }}
+                    if (bottomBox) {{
                         const topRect = topEl.getBoundingClientRect();
                         const desiredGap = Math.max(12, Math.round(frameRect.top - topRect.bottom));
                         bottomBox.style.marginTop = '0px';
                         const currentBottomGap = bottomBox.getBoundingClientRect().top - frameRect.bottom;
                         const adjust = Math.round(desiredGap - currentBottomGap);
                         bottomBox.style.setProperty('margin-top', adjust + 'px', 'important');
-                    }
-                }
+                    }}
+                }}
                 return;
-            }
+            }}
 
             // Pada halaman Courses: pastikan semua baris banner kursus mempunyai ruang standard yang seragam
             // (membuang sisa ketinggian/margin berlebihan pada bekas pertama dan mana-mana banner tambahan)
             const detailBtns = Array.from(doc.querySelectorAll('button')).filter(b => b.innerText && b.innerText.trim() === 'Details');
-            if (detailBtns.length > 0) {
+            if (detailBtns.length > 0) {{
                 const courseRows = [];
-                detailBtns.forEach(btn => {
+                detailBtns.forEach(btn => {{
                     const rowBlock = btn.closest('div[data-testid="stHorizontalBlock"]');
-                    if (rowBlock && !courseRows.includes(rowBlock)) {
+                    if (rowBlock && !courseRows.includes(rowBlock)) {{
                         courseRows.push(rowBlock);
-                    }
-                });
+                    }}
+                }});
 
-                courseRows.forEach((row, idx) => {
+                courseRows.forEach((row, idx) => {{
                     const rowWrapper = row.closest('div[data-testid="stElementContainer"]') || row.parentElement;
-                    if (rowWrapper) {
+                    if (rowWrapper) {{
                         rowWrapper.style.removeProperty('height');
                         rowWrapper.style.removeProperty('min-height');
                         rowWrapper.style.removeProperty('transform');
                         rowWrapper.style.setProperty('margin-top', '0px', 'important');
                         rowWrapper.style.setProperty('margin-bottom', '14px', 'important');
-                    }
-                    row.querySelectorAll('div[data-testid="stElementContainer"], iframe').forEach(el => {
-                        if (el.tagName === 'IFRAME') {
+                    }}
+                    row.querySelectorAll('div[data-testid="stElementContainer"], iframe').forEach(el => {{
+                        if (el.tagName === 'IFRAME') {{
                             const rect = el.getBoundingClientRect();
-                            if (rect.height > 40) {
+                            if (rect.height > 40) {{
                                 const box = el.closest('div[data-testid="stElementContainer"]');
-                                if (box) {
+                                if (box) {{
                                     box.style.setProperty('height', Math.round(rect.height) + 'px', 'important');
                                     box.style.setProperty('min-height', '0px', 'important');
                                     box.style.setProperty('margin-bottom', '0px', 'important');
-                                }
-                            }
-                        } else {
+                                }}
+                            }}
+                        }} else {{
                             el.style.removeProperty('min-height');
-                        }
-                    });
+                        }}
+                    }});
 
                     // Sembunyikan sebarang elemen pemisah kosong (spacer) di antara baris banner kursus
                     // KECUALI kanvas paparan Details / Syllabus kursus
-                    if (rowWrapper && idx < courseRows.length - 1) {
+                    if (rowWrapper && idx < courseRows.length - 1) {{
                         let nextEl = rowWrapper.nextElementSibling;
                         const nextRowWrapper = courseRows[idx + 1].closest('div[data-testid="stElementContainer"]') || courseRows[idx + 1].parentElement;
-                        while (nextEl && nextEl !== nextRowWrapper) {
+                        while (nextEl && nextEl !== nextRowWrapper) {{
                             const isCourseCanvas = nextEl.querySelector('.signtech-course-canvas') || (nextEl.innerText && nextEl.innerText.trim().length > 0);
                             const hasVisibleContent = isCourseCanvas || nextEl.querySelector('img, iframe, button, input, table, h1, h2, h3, p, ul, li');
-                            if (!hasVisibleContent) {
+                            if (!hasVisibleContent) {{
                                 nextEl.style.setProperty('display', 'none', 'important');
                                 nextEl.style.setProperty('height', '0px', 'important');
                                 nextEl.style.setProperty('margin', '0px', 'important');
-                            } else {
+                            }} else {{
                                 nextEl.style.removeProperty('display');
                                 nextEl.style.removeProperty('height');
-                            }
+                            }}
                             nextEl = nextEl.nextElementSibling;
-                        }
-                    }
-                });
-            }
-        }
+                        }}
+                    }}
+                }});
+            }}
+        }}
         setInterval(syncPosterAndStatements, 200);
         window.parent.addEventListener('resize', syncPosterAndStatements);
-    })();
+    }})();
     </script>""", height=0, width=0)
 
     r=runtime()
