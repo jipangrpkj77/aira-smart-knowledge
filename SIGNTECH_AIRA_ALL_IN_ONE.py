@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""AIRA SIGNTECH ALL-IN-ONE V4.4 (Mobile & Desktop Responsive)
+"""AIRA SIGNTECH ALL-IN-ONE V4.4
 
 ONE .py entry point: Streamlit site + isolated chat fragment + knowledge RAG + Groq.
 The supplied source website is bundled with FTP credentials removed. No legacy
@@ -1131,7 +1131,7 @@ if _qp_page in _SLUG_TO_PAGE and st.session_state.get("_init_route_applied") != 
     else:
         _site_code = _raw_site + "\n" + _ftp_override_code
 
-    # Suntik CSS gaya statement + RESPONSIVE MOBILE (Android / iOS)
+    # Suntik CSS gaya statement (sama jenis & saiz fon seperti halaman About, justify, dan ruang seimbang atas & bawah poster)
     st.markdown("""<style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500&display=swap');
     .signtech-home-statement {
@@ -1153,81 +1153,6 @@ if _qp_page in _SLUG_TO_PAGE and st.session_state.get("_init_route_applied") != 
     }
     div[data-testid="stElementContainer"]:has(.signtech-statement-bottom) {
         margin-top: 0px !important;
-    }
-
-    /* ================= MOBILE / ANDROID RESPONSIVE VIEW ================= */
-    @media (max-width: 768px) {
-        /* Optimumkan ruang tepi dan atas pada skrin telefon */
-        .block-container,
-        div[data-testid="stAppViewBlockContainer"],
-        div[data-testid="stMainBlockContainer"] {
-            padding-top: 0.75rem !important;
-            padding-left: 0.75rem !important;
-            padding-right: 0.75rem !important;
-            padding-bottom: 5.5rem !important;
-            max-width: 100vw !important;
-            overflow-x: hidden !important;
-        }
-
-        /* Elakkan skrol melintang pada keseluruhan aplikasi */
-        html, body, [data-testid="stAppViewContainer"] {
-            overflow-x: hidden !important;
-            max-width: 100vw !important;
-        }
-
-        /* Laraskan saiz fon statement supaya selesa dibaca di telefon */
-        .signtech-home-statement {
-            font-size: 14.5px !important;
-            line-height: 1.65 !important;
-            text-align: left !important;
-            padding-left: 2px !important;
-            padding-right: 2px !important;
-        }
-
-        /* Kecilkan tajuk besar supaya tidak terlalu makan ruang */
-        h1 { font-size: 1.45rem !important; line-height: 1.3 !important; }
-        h2 { font-size: 1.25rem !important; line-height: 1.35 !important; }
-        h3 { font-size: 1.1rem !important; line-height: 1.4 !important; }
-
-        /* Pastikan gambar, poster & iframe responsif ikut lebar skrin */
-        img, iframe, video, canvas, svg {
-            max-width: 100% !important;
-        }
-        iframe:not([title$="aira_cloud_widget"]) {
-            width: 100% !important;
-        }
-
-        /* Susun lajur (st.columns) dengan jarak yang kemas apabila bertingkat */
-        div[data-testid="stHorizontalBlock"] {
-            gap: 0.5rem !important;
-        }
-        div[data-testid="stColumn"] {
-            width: 100% !important;
-            flex: 1 1 100% !important;
-            min-width: 100% !important;
-        }
-
-        /* Jadikan butang mudah ditekan (mesra ibu jari) */
-        .stButton > button,
-        div[data-testid="stFormSubmitButton"] > button {
-            width: 100% !important;
-            min-height: 2.75rem !important;
-            font-size: 0.92rem !important;
-            padding: 0.45rem 0.75rem !important;
-        }
-
-        /* Ruang isian borang (Input / Selectbox) supaya tidak zoom automatik di Android/iOS */
-        input, textarea, select,
-        div[data-baseweb="input"] input,
-        div[data-baseweb="select"] {
-            font-size: 16px !important;
-        }
-
-        /* Kanvas silibus kursus & kad maklumat */
-        .signtech-course-canvas {
-            padding: 12px !important;
-            font-size: 14px !important;
-        }
     }
     </style>""", unsafe_allow_html=True)
 
@@ -1280,11 +1205,47 @@ if _qp_page in _SLUG_TO_PAGE and st.session_state.get("_init_route_applied") != 
     _current_subpath = _active_slug_map.get(str(st.session_state.get('selected_page', 'Home')), '/')
 
     # Selaraskan lebar kedua-dua statement supaya menyamai lebar bingkai poster pada halaman Home,
-    # serta pastikan ruang antara setiap banner pada halaman Courses kekal seragam (Desktop & Mobile)
+    # pastikan ruang antara setiap banner pada halaman Courses kekal seragam,
+    # dan paksa paparan Desktop View (1280px) secara automatik apabila dibuka di telefon (Android/iOS)
     components.html(f"""<script>
     (function() {{
         const doc = window.parent.document;
         const targetSubpath = {json.dumps(_current_subpath)};
+
+        function forceDesktopViewportOnMobile() {{
+            const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+                || (window.parent.screen && Math.min(window.parent.screen.width, window.parent.screen.height) < 768);
+            if (!isMobileDevice) return;
+
+            const desktopWidth = 1280;
+            const applyViewport = (targetDoc) => {{
+                if (!targetDoc || !targetDoc.head) return;
+                let meta = targetDoc.querySelector('meta[name="viewport"]');
+                if (!meta) {{
+                    meta = targetDoc.createElement('meta');
+                    meta.name = 'viewport';
+                    targetDoc.head.appendChild(meta);
+                }}
+                const desiredContent = 'width=' + desktopWidth + ', initial-scale=0.3, minimum-scale=0.2, maximum-scale=5.0, user-scalable=yes';
+                if (meta.getAttribute('content') !== desiredContent) {{
+                    meta.setAttribute('content', desiredContent);
+                }}
+                if (targetDoc.documentElement) {{
+                    targetDoc.documentElement.style.minWidth = desktopWidth + 'px';
+                }}
+                if (targetDoc.body) {{
+                    targetDoc.body.style.minWidth = desktopWidth + 'px';
+                }}
+            }};
+
+            applyViewport(doc);
+            try {{
+                if (window.top && window.top !== window.parent && window.top.document) {{
+                    applyViewport(window.top.document);
+                }}
+            }} catch (e) {{}}
+        }}
+        forceDesktopViewportOnMobile();
 
         function syncSubAddress() {{
             try {{
@@ -1334,11 +1295,11 @@ if _qp_page in _SLUG_TO_PAGE and st.session_state.get("_init_route_applied") != 
         }}, true);
 
         function syncPosterAndStatements() {{
-            const isMobile = (window.parent.innerWidth || doc.documentElement.clientWidth || 1024) <= 768;
+            forceDesktopViewportOnMobile();
             const topEl = doc.querySelector('.signtech-statement-top');
             const bottomEl = doc.querySelector('.signtech-statement-bottom');
             if (topEl && bottomEl) {{
-                const iframes = Array.from(doc.querySelectorAll('iframe')).filter(f => !f.title.includes('aira_cloud_widget') && f.offsetHeight > 80);
+                const iframes = Array.from(doc.querySelectorAll('iframe')).filter(f => !f.title.includes('aira_cloud_widget') && f.offsetHeight > 120);
                 if (!iframes.length) return;
                 const posterFrame = iframes[0];
                 const posterBox = posterFrame.closest('div[data-testid="stElementContainer"]') || posterFrame.parentElement;
@@ -1349,40 +1310,30 @@ if _qp_page in _SLUG_TO_PAGE and st.session_state.get("_init_route_applied") != 
                     posterBox.style.marginTop = '0px';
                     posterBox.style.marginBottom = '0px';
                     const frameRect = posterFrame.getBoundingClientRect();
-                    if (isMobile) {{
-                        posterBox.style.height = 'auto';
+                    if (frameRect.height > 120) {{
+                        posterBox.style.height = Math.round(frameRect.height) + 'px';
                         posterBox.style.minHeight = '0px';
+                        posterBox.style.lineHeight = '0';
+                    }}
+                    if (frameRect.width > 200) {{
                         doc.querySelectorAll('.signtech-home-statement').forEach(el => {{
-                            el.style.maxWidth = '100%';
+                            el.style.maxWidth = Math.round(frameRect.width) + 'px';
                         }});
-                        if (bottomBox) {{
-                            bottomBox.style.setProperty('margin-top', '12px', 'important');
-                        }}
-                    }} else {{
-                        if (frameRect.height > 120) {{
-                            posterBox.style.height = Math.round(frameRect.height) + 'px';
-                            posterBox.style.minHeight = '0px';
-                            posterBox.style.lineHeight = '0';
-                        }}
-                        if (frameRect.width > 200) {{
-                            doc.querySelectorAll('.signtech-home-statement').forEach(el => {{
-                                el.style.maxWidth = Math.round(frameRect.width) + 'px';
-                            }});
-                        }}
-                        if (bottomBox) {{
-                            const topRect = topEl.getBoundingClientRect();
-                            const desiredGap = Math.max(12, Math.round(frameRect.top - topRect.bottom));
-                            bottomBox.style.marginTop = '0px';
-                            const currentBottomGap = bottomBox.getBoundingClientRect().top - frameRect.bottom;
-                            const adjust = Math.round(desiredGap - currentBottomGap);
-                            bottomBox.style.setProperty('margin-top', adjust + 'px', 'important');
-                        }}
+                    }}
+                    if (bottomBox) {{
+                        const topRect = topEl.getBoundingClientRect();
+                        const desiredGap = Math.max(12, Math.round(frameRect.top - topRect.bottom));
+                        bottomBox.style.marginTop = '0px';
+                        const currentBottomGap = bottomBox.getBoundingClientRect().top - frameRect.bottom;
+                        const adjust = Math.round(desiredGap - currentBottomGap);
+                        bottomBox.style.setProperty('margin-top', adjust + 'px', 'important');
                     }}
                 }}
                 return;
             }}
 
             // Pada halaman Courses: pastikan semua baris banner kursus mempunyai ruang standard yang seragam
+            // (membuang sisa ketinggian/margin berlebihan pada bekas pertama dan mana-mana banner tambahan)
             const detailBtns = Array.from(doc.querySelectorAll('button')).filter(b => b.innerText && b.innerText.trim() === 'Details');
             if (detailBtns.length > 0) {{
                 const courseRows = [];
@@ -1400,7 +1351,7 @@ if _qp_page in _SLUG_TO_PAGE and st.session_state.get("_init_route_applied") != 
                         rowWrapper.style.removeProperty('min-height');
                         rowWrapper.style.removeProperty('transform');
                         rowWrapper.style.setProperty('margin-top', '0px', 'important');
-                        rowWrapper.style.setProperty('margin-bottom', isMobile ? '18px' : '14px', 'important');
+                        rowWrapper.style.setProperty('margin-bottom', '14px', 'important');
                     }}
                     row.querySelectorAll('div[data-testid="stElementContainer"], iframe').forEach(el => {{
                         if (el.tagName === 'IFRAME') {{
@@ -1408,7 +1359,7 @@ if _qp_page in _SLUG_TO_PAGE and st.session_state.get("_init_route_applied") != 
                             if (rect.height > 40) {{
                                 const box = el.closest('div[data-testid="stElementContainer"]');
                                 if (box) {{
-                                    box.style.setProperty('height', isMobile ? 'auto' : (Math.round(rect.height) + 'px'), 'important');
+                                    box.style.setProperty('height', Math.round(rect.height) + 'px', 'important');
                                     box.style.setProperty('min-height', '0px', 'important');
                                     box.style.setProperty('margin-bottom', '0px', 'important');
                                 }}
@@ -1449,9 +1400,6 @@ if _qp_page in _SLUG_TO_PAGE and st.session_state.get("_init_route_applied") != 
     widget=components.declare_component('aira_cloud_widget',path=str(ROOT/'web'))
     st.markdown("""<style>
     iframe[title$="aira_cloud_widget"]{position:fixed!important;right:0!important;bottom:0!important;width:min(420px,100vw)!important;z-index:999999!important;background:transparent!important;border:0!important;max-height:100dvh!important;}
-    @media (max-width: 768px) {
-        iframe[title$="aira_cloud_widget"]{width:100vw!important;max-width:100vw!important;max-height:85dvh!important;right:0!important;left:0!important;}
-    }
     div[data-testid="stElementContainer"]:has(iframe[title$="aira_cloud_widget"]){height:0!important;min-height:0!important;overflow:visible!important;opacity:1!important;}
     div[data-testid="stElementContainer"]:has(iframe[title$="aira_cloud_widget"]) iframe{opacity:1!important;}
     footer, [data-testid="stFooter"], [data-testid="stBottomBlockContainer"] footer, .stApp footer, #MainMenu {display:none!important;visibility:hidden!important;height:0!important;}
